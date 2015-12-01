@@ -5,7 +5,7 @@
 
 // A Token is any character in the regular expression that may have a special
 // meaning. If it doesn't, then it gets parsed as a char.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Token {
     Char(char),
     Wildcard,
@@ -22,7 +22,7 @@ pub enum Token {
     ClosedParen,
 }
 
-pub fn parse(s: String) -> Result<Vec<Token>, &'static str> {
+pub fn parse_string(s: String) -> Result<Vec<Token>, &'static str> {
     let mut iter = s.chars();
     let mut tokens : Vec<Token> = Vec::new();
     loop {
@@ -98,18 +98,29 @@ pub fn parse(s: String) -> Result<Vec<Token>, &'static str> {
     Ok(tokens)
 }
 
+pub fn parse(s: &str) -> Result<Vec<Token>, &'static str> {
+    parse_string(s.to_string())
+}
+
+pub fn unsafe_parse(s: &str) -> Vec<Token> {
+    match parse(s) {
+        Err(s) => panic!(s),
+        Ok(t) => t
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn it_can_parse_empty_strings() {
-        assert_eq!(parse(String::from("")), Ok(vec![]));
+        assert_eq!(parse(""), Ok(vec![]));
     }
 
     #[test]
     fn it_can_parse_simple_strings() {
-        assert_eq!(parse(String::from("hello")),
+        assert_eq!(parse("hello"),
                    Ok(vec![Token::Char('h'),
                            Token::Char('e'),
                            Token::Char('l'),
@@ -119,82 +130,82 @@ mod tests {
 
     #[test]
     fn it_can_recognize_wildcards() {
-        assert_eq!(parse(String::from("he.lo")),
+        assert_eq!(parse("he.lo"),
                    Ok(vec![Token::Char('h'),
                            Token::Char('e'),
                            Token::Wildcard,
                            Token::Char('l'),
                            Token::Char('o')]));
 
-        assert_eq!(parse(String::from(".e.lo")),
+        assert_eq!(parse(".e.lo"),
                    Ok(vec![Token::Wildcard,
                            Token::Char('e'),
                            Token::Wildcard,
                            Token::Char('l'),
                            Token::Char('o')]));
 
-        assert_eq!(parse(String::from(".")), Ok(vec![Token::Wildcard]));
+        assert_eq!(parse("."), Ok(vec![Token::Wildcard]));
     }
 
     #[test]
     fn it_can_recognize_stars() {
-        assert_eq!(parse(String::from("he*lo")),
+        assert_eq!(parse("he*lo"),
                    Ok(vec![Token::Char('h'),
                            Token::Char('e'),
                            Token::NoneOrMore,
                            Token::Char('l'),
                            Token::Char('o')]));
 
-        assert_eq!(parse(String::from(".e*lo")),
+        assert_eq!(parse(".e*lo"),
                    Ok(vec![Token::Wildcard,
                            Token::Char('e'),
                            Token::NoneOrMore,
                            Token::Char('l'),
                            Token::Char('o')]));
 
-        assert_eq!(parse(String::from(".*")), Ok(vec![Token::Wildcard,
+        assert_eq!(parse(".*"), Ok(vec![Token::Wildcard,
                                                       Token::NoneOrMore]));
     }
 
     #[test]
     fn it_can_recognize_pluses() {
-        assert_eq!(parse(String::from("he+lo")),
+        assert_eq!(parse("he+lo"),
                    Ok(vec![Token::Char('h'),
                            Token::Char('e'),
                            Token::OneOrMore,
                            Token::Char('l'),
                            Token::Char('o')]));
 
-        assert_eq!(parse(String::from("*e+lo")),
+        assert_eq!(parse("*e+lo"),
                    Ok(vec![Token::NoneOrMore,
                            Token::Char('e'),
                            Token::OneOrMore,
                            Token::Char('l'),
                            Token::Char('o')]));
 
-        assert_eq!(parse(String::from(".+")), Ok(vec![Token::Wildcard,
+        assert_eq!(parse(".+"), Ok(vec![Token::Wildcard,
                                                       Token::OneOrMore]));
 
         // These aren't valid expressions, but they are valid syntax...
-        assert_eq!(parse(String::from("*+*")), Ok(vec![Token::NoneOrMore,
+        assert_eq!(parse("*+*"), Ok(vec![Token::NoneOrMore,
                                                        Token::OneOrMore,
                                                        Token::NoneOrMore]));
     }
 
     #[test]
     fn it_can_recognize_qmarks() {
-        assert_eq!(parse(String::from("?????")),
+        assert_eq!(parse("?????"),
                    Ok(vec![Token::NoneOrOne,
                            Token::NoneOrOne,
                            Token::NoneOrOne,
                            Token::NoneOrOne,
                            Token::NoneOrOne]));
 
-        assert_eq!(parse(String::from("-?")),
+        assert_eq!(parse("-?"),
                    Ok(vec![Token::Char('-'),
                            Token::NoneOrOne]));
 
-        assert_eq!(parse(String::from("hello? it's me.")),
+        assert_eq!(parse("hello? it's me."),
                    Ok(vec![Token::Char('h'),
                            Token::Char('e'),
                            Token::Char('l'),
@@ -214,27 +225,27 @@ mod tests {
 
     #[test]
     fn it_can_escape_characters() {
-        assert_eq!(parse(String::from("\\?\\.\\+\\*\\a")),
+        assert_eq!(parse("\\?\\.\\+\\*\\a"),
                    Ok(vec![Token::Char('?'),
                            Token::Char('.'),
                            Token::Char('+'),
                            Token::Char('*'),
                            Token::Char('a')]));
 
-        assert_eq!(parse(String::from("\\\"")),
+        assert_eq!(parse("\\\""),
                    Ok(vec![Token::Char('\"')]));        
     }
 
     #[test]
     fn it_fails_if_escape_is_at_end_of_string() {
-        assert!(parse(String::from("\\")).is_err());
-        assert!(parse(String::from("hello\\")).is_err());
-        assert!(!parse(String::from("hel\\lo")).is_err());
+        assert!(parse("\\").is_err());
+        assert!(parse("hello\\").is_err());
+        assert!(!parse("hel\\lo").is_err());
     }
 
     #[test]
     fn it_recognizes_numeral_ranges() {
-        assert_eq!(parse(String::from("0123456789")),
+        assert_eq!(parse("0123456789"),
                    Ok(vec![Token::Char('0'),
                            Token::Char('1'),
                            Token::Char('2'),
@@ -246,7 +257,7 @@ mod tests {
                            Token::Char('8'),
                            Token::Char('9')]));
 
-        assert_eq!(parse(String::from("0-10-20-9")),
+        assert_eq!(parse("0-10-20-9"),
                    Ok(vec![Token::Char('0'),
                            Token::Char('-'),
                            Token::Char('1'),
@@ -255,7 +266,7 @@ mod tests {
                            Token::Char('2'),
                            Token::NumeralRange]));
                                    
-        assert_eq!(parse(String::from("9-0-9")),
+        assert_eq!(parse("9-0-9"),
                    Ok(vec![Token::Char('9'),
                            Token::Char('-'),
                            Token::NumeralRange]));
@@ -263,19 +274,19 @@ mod tests {
 
     #[test]
     fn it_recognizes_lowercase_ranges() {
-        assert_eq!(parse(String::from("az")),
+        assert_eq!(parse("az"),
                    Ok(vec![Token::Char('a'),
                            Token::Char('z')]));
 
-        assert_eq!(parse(String::from("0-9a-z")),
+        assert_eq!(parse("0-9a-z"),
                    Ok(vec![Token::NumeralRange,
                            Token::LowercaseRange]));
 
-        assert_eq!(parse(String::from("a-z0-9")),
+        assert_eq!(parse("a-z0-9"),
                    Ok(vec![Token::LowercaseRange,
                            Token::NumeralRange]));
 
-        assert_eq!(parse(String::from("z-a-z")),
+        assert_eq!(parse("z-a-z"),
                    Ok(vec![Token::Char('z'),
                            Token::Char('-'),
                            Token::LowercaseRange]));
@@ -283,29 +294,29 @@ mod tests {
 
     #[test]
     fn it_recognizes_uppercase_ranges() {
-        assert_eq!(parse(String::from("AZ")),
+        assert_eq!(parse("AZ"),
                    Ok(vec![Token::Char('A'),
                            Token::Char('Z')]));
 
-        assert_eq!(parse(String::from("0-9a-Z")),
+        assert_eq!(parse("0-9a-Z"),
                    Ok(vec![Token::NumeralRange,
                            Token::Char('a'),
                            Token::Char('-'),
                            Token::Char('Z')]));
 
-        assert_eq!(parse(String::from("A-Za-z0-9")),
+        assert_eq!(parse("A-Za-z0-9"),
                    Ok(vec![Token::UppercaseRange,
                            Token::LowercaseRange,
                            Token::NumeralRange]));
 
-        assert_eq!(parse(String::from("z-A\\-Z")),
+        assert_eq!(parse("z-A\\-Z"),
                    Ok(vec![Token::Char('z'),
                            Token::Char('-'),
                            Token::Char('A'),
                            Token::Char('-'),
                            Token::Char('Z')]));
 
-        assert_eq!(parse(String::from("z-A-Z")),
+        assert_eq!(parse("z-A-Z"),
                    Ok(vec![Token::Char('z'),
                            Token::Char('-'),
                            Token::UppercaseRange]));
@@ -313,18 +324,18 @@ mod tests {
 
     #[test]
     fn it_recognizes_brackets() {
-        assert_eq!(parse(String::from("[")),
+        assert_eq!(parse("["),
                    Ok(vec![Token::OpenBracket]));
 
-        assert_eq!(parse(String::from("][")),
+        assert_eq!(parse("]["),
                    Ok(vec![Token::ClosedBracket,
                            Token::OpenBracket]));
 
-        assert_eq!(parse(String::from("[]")),
+        assert_eq!(parse("[]"),
                    Ok(vec![Token::OpenBracket,
                            Token::ClosedBracket]));
 
-        assert_eq!(parse(String::from("[0-9]")),
+        assert_eq!(parse("[0-9]"),
                    Ok(vec![Token::OpenBracket,
                            Token::NumeralRange,
                            Token::ClosedBracket]));
@@ -332,29 +343,29 @@ mod tests {
 
     #[test]
     fn it_properly_handles_bracket_inversion() {
-        assert_eq!(parse(String::from("[^")),
+        assert_eq!(parse("[^"),
                    Ok(vec![Token::OpenBracket,
                            Token::BracketInversion]));
 
-        assert_eq!(parse(String::from("]^[")),
+        assert_eq!(parse("]^["),
                    Ok(vec![Token::ClosedBracket,
                            Token::Char('^'),
                            Token::OpenBracket]));
 
-        assert_eq!(parse(String::from("^[^]^")),
+        assert_eq!(parse("^[^]^"),
                    Ok(vec![Token::Char('^'),
                            Token::OpenBracket,
                            Token::BracketInversion,
                            Token::ClosedBracket,
                            Token::Char('^')]));
 
-        assert_eq!(parse(String::from("[^0-9]")),
+        assert_eq!(parse("[^0-9]"),
                    Ok(vec![Token::OpenBracket,
                            Token::BracketInversion,
                            Token::NumeralRange,
                            Token::ClosedBracket]));
 
-        assert_eq!(parse(String::from("[0^-9]")),
+        assert_eq!(parse("[0^-9]"),
                    Ok(vec![Token::OpenBracket,
                            Token::Char('0'),
                            Token::Char('^'),
@@ -362,20 +373,20 @@ mod tests {
                            Token::Char('9'),
                            Token::ClosedBracket]));
 
-        assert_eq!(parse(String::from("[0-9^]")),
+        assert_eq!(parse("[0-9^]"),
                    Ok(vec![Token::OpenBracket,
                            Token::NumeralRange,
                            Token::Char('^'),
                            Token::ClosedBracket]));
 
-        assert_eq!(parse(String::from("[\\^-9]")),
+        assert_eq!(parse("[\\^-9]"),
                    Ok(vec![Token::OpenBracket,
                            Token::Char('^'),
                            Token::Char('-'),
                            Token::Char('9'),
                            Token::ClosedBracket]));
 
-        assert_eq!(parse(String::from("^[-9]")),
+        assert_eq!(parse("^[-9]"),
                    Ok(vec![Token::Char('^'),
                            Token::OpenBracket,
                            Token::Char('-'),
@@ -385,18 +396,18 @@ mod tests {
 
     #[test]
     fn it_recognizes_parentheses() {
-        assert_eq!(parse(String::from("(")),
+        assert_eq!(parse("("),
                    Ok(vec!(Token::OpenParen)));
 
-        assert_eq!(parse(String::from(")(")),
+        assert_eq!(parse(")("),
                    Ok(vec!(Token::ClosedParen,
                            Token::OpenParen)));
 
-        assert_eq!(parse(String::from("()")),
+        assert_eq!(parse("()"),
                    Ok(vec!(Token::OpenParen,
                            Token::ClosedParen)));
 
-        assert_eq!(parse(String::from("(0-9)")),
+        assert_eq!(parse("(0-9)"),
                    Ok(vec!(Token::OpenParen,
                            Token::NumeralRange,
                            Token::ClosedParen)));
