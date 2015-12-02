@@ -41,45 +41,58 @@ fn build_expression(tokens: Vec<Token>, within_brackets: bool,
 
         // Deal with the next token...
         match next_token {
-            Token::Wildcard => exprs.push(Expression::Wildcard),
+            Token::Wildcard => if within_brackets {
+                exprs.push(Expression::Char('.'));
+            } else {
+                exprs.push(Expression::Wildcard);
+            },
             Token::NoneOrMore => {
                 // Pop the last expression off the stack -- if none
                 // exists, ignore this character...
-                if let Some(last_expr) = exprs.pop() {
-                    let can_multiply = last_expr.is_multiplyable();
-                    if can_multiply && !within_brackets {
-                        exprs.push(Expression::NoneOrMore(
-                            Box::new(last_expr)))
-                    } else {
-                        exprs.push(last_expr); // If not, put it back
+                if within_brackets {
+                    exprs.push(Expression::Char('*'));
+                } else {
+                    if let Some(last_expr) = exprs.pop() {
+                        if last_expr.is_multiplyable() {
+                            exprs.push(Expression::NoneOrMore(
+                                Box::new(last_expr)))
+                        } else {
+                            exprs.push(last_expr); // If not, put it back
+                        }
                     }
                 }
             }
 
             Token::OneOrMore => {
-                // Pop the last expression off the stack -- if none
-                // exists, ignore this character...
-                if let Some(last_expr) = exprs.pop() {
-                    let can_multiply = last_expr.is_multiplyable();
-                    if can_multiply && !within_brackets {
-                        exprs.push(Expression::OneOrMore(
-                            Box::new(last_expr)))
-                    } else {
-                        exprs.push(last_expr); // If not, put it back
+                if within_brackets {
+                    exprs.push(Expression::Char('+'));
+                } else {
+                    // Pop the last expression off the stack -- if none
+                    // exists, ignore this character...
+                    if let Some(last_expr) = exprs.pop() {
+                        if last_expr.is_multiplyable() {
+                            exprs.push(Expression::OneOrMore(
+                                Box::new(last_expr)))
+                        } else {
+                            exprs.push(last_expr); // If not, put it back
+                        }
                     }
                 }
             }
 
             Token::NoneOrOne => {
-                // Pop the last expression off the stack -- if none
-                // exists, ignore this character...
-                if let Some(last_expr) = exprs.pop() {
-                    let can_multiply = last_expr.is_multiplyable();
-                    if can_multiply && !within_brackets {
-                        exprs.push(Expression::NoneOrOne(
-                            Box::new(last_expr)))
-                    } else {
-                        exprs.push(last_expr); // If not, put it back
+                if within_brackets {
+                    exprs.push(Expression::Char('?'));
+                } else {
+                    // Pop the last expression off the stack -- if none
+                    // exists, ignore this character...
+                    if let Some(last_expr) = exprs.pop() {
+                        if last_expr.is_multiplyable() {
+                            exprs.push(Expression::NoneOrOne(
+                                Box::new(last_expr)))
+                        } else {
+                            exprs.push(last_expr); // If not, put it back
+                        }
                     }
                 }
             }
@@ -153,38 +166,46 @@ fn build_expression(tokens: Vec<Token>, within_brackets: bool,
             }
 
             Token::OpenParen => {
-                // Search for a closing parenthesis -- if none is found,
-                // then our regex is malformed
-                let mut depth = 1;
-                let grouped: Vec<Token> = itr
-                    .clone()
-                    .take_while(|&t: &&Token| {
-                        if *t == Token::ClosedParen {
-                            depth -= 1;
-                        } else if *t == Token::OpenParen {
-                            depth += 1;
-                        }
-                        depth > 0
-                    })
-                    .map(|t: &Token| t.clone())
-                    .collect();
-
-                // Skip the ones that we grouped together...
-                for _ in 0..(grouped.len()) { itr.next(); }
-
-                // Consume the closed parenthesis and keep going
-                if let Some(&Token::ClosedParen) = itr.next() {
-                    // We're just grouping everything as one expression...
-                    let e = try!(build_expression(grouped, false, allow_brackets));
-                    exprs.push(e)
+                if within_brackets {
+                    exprs.push(Expression::Char('('));
                 } else {
-                    return Err("Parenthesis never closed!");
+                    // Search for a closing parenthesis -- if none is found,
+                    // then our regex is malformed
+                    let mut depth = 1;
+                    let grouped: Vec<Token> = itr
+                        .clone()
+                        .take_while(|&t: &&Token| {
+                            if *t == Token::ClosedParen {
+                                depth -= 1;
+                            } else if *t == Token::OpenParen {
+                                depth += 1;
+                            }
+                            depth > 0
+                        })
+                        .map(|t: &Token| t.clone())
+                        .collect();
+
+                    // Skip the ones that we grouped together...
+                    for _ in 0..(grouped.len()) { itr.next(); }
+
+                    // Consume the closed parenthesis and keep going
+                    if let Some(&Token::ClosedParen) = itr.next() {
+                        // We're just grouping everything as one expression...
+                        let e = try!(build_expression(grouped, false, allow_brackets));
+                        exprs.push(e)
+                    } else {
+                        return Err("Parenthesis never closed!");
+                    }
                 }
             }
 
             // We should never encounter a closed parenthesis, bracket inversion, or closed bracket...
             Token::ClosedBracket => return Err("Unexpected closing bracket!"),
-            Token::ClosedParen => return Err("Unexpected closing parenthesis!"),
+            Token::ClosedParen => if within_brackets {
+                exprs.push(Expression::Char(')'));
+            } else {
+                return Err("Unexpected closing parenthesis!")
+            },
 
             // This should really never happen
             // !FIXME! Maybe this should panic?
@@ -218,7 +239,15 @@ impl Expression {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokenizer::unsafe_parse;
+    use tokenizer::Token;
+    use tokenizer::parse_string;
+
+    fn unsafe_parse(s: &str) -> Vec<Token> {
+        match parse_string(s.to_string()) {
+            Ok(t) => t,
+            Err(e) => panic!(e)
+        }
+    }
 
     #[test]
     fn it_can_make_an_empty_expr() {
@@ -407,18 +436,19 @@ mod tests {
                    Expression::All(vec![
                        Expression::Any(vec![
                            Expression::Char('l'),
+                           Expression::Char('+'),
                            Expression::Char('o'),
-                           Expression::Char('l')])]));
+                           Expression::Char('l'),
+                           Expression::Char('*')])]));
 
         assert_eq!(Expression::new(unsafe_parse("(.[(0-9)])")).unwrap(),
                    Expression::All(vec![
                        Expression::All(vec![
                            Expression::Wildcard,
                            Expression::Any(vec![
-                               Expression::All(vec![
-                                   Expression::Char('0'),
-                                   Expression::Char('-'),
-                                   Expression::Char('9')])])])]));
+                               Expression::Char('('),
+                               Expression::Numeral,
+                               Expression::Char(')')])])]));
     }
 
     #[test]
@@ -447,8 +477,9 @@ mod tests {
                    Expression::All(vec![
                        Expression::Char('l'),
                        Expression::Any(vec![
-                           Expression::All(vec![
-                               Expression::Char('o')])]),
+                           Expression::Char('('),
+                           Expression::Char('o'),
+                           Expression::Char(')')]),
                        Expression::Char('l')]));
 
         assert_eq!(Expression::new(unsafe_parse("l[0-9(o)]l")).unwrap(),
@@ -456,8 +487,9 @@ mod tests {
                        Expression::Char('l'),
                        Expression::Any(vec![
                            Expression::Numeral,
-                           Expression::All(vec![
-                               Expression::Char('o')])]),
+                           Expression::Char('('),
+                           Expression::Char('o'),
+                           Expression::Char(')')]),
                        Expression::Char('l')]));
 
         assert_eq!(Expression::new(unsafe_parse("l[^0-9(o)]l")).unwrap(),
@@ -465,8 +497,9 @@ mod tests {
                        Expression::Char('l'),
                        Expression::None(vec![
                            Expression::Numeral,
-                           Expression::All(vec![
-                               Expression::Char('o')])]),
+                           Expression::Char('('),
+                           Expression::Char('o'),
+                           Expression::Char(')')]),
                        Expression::Char('l')]));
 
         assert_eq!(Expression::new(unsafe_parse("l[0-9^(o)](.)")).unwrap(),
@@ -475,8 +508,9 @@ mod tests {
                        Expression::Any(vec![
                            Expression::Numeral,
                            Expression::Char('^'),
-                           Expression::All(vec![
-                               Expression::Char('o')])]),
+                           Expression::Char('('),
+                           Expression::Char('o'),
+                           Expression::Char(')')]),
                        Expression::All(vec![
                            Expression::Wildcard])]));
     }
