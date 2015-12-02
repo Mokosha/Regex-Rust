@@ -98,20 +98,13 @@ pub fn parse_string(s: String) -> Result<Vec<Token>, &'static str> {
     Ok(tokens)
 }
 
-pub fn parse(s: &str) -> Result<Vec<Token>, &'static str> {
-    parse_string(s.to_string())
-}
-
-pub fn unsafe_parse(s: &str) -> Vec<Token> {
-    match parse(s) {
-        Err(s) => panic!(s),
-        Ok(t) => t
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn parse(s: &str) -> Result<Vec<Token>, &'static str> {
+        parse_string(s.to_string())
+    }
 
     #[test]
     fn it_can_parse_empty_strings() {
