@@ -9,26 +9,9 @@ fn drop_n<T: Clone>(v: Vec<T>, n: usize) -> Vec<T> {
 fn match_char(c: Character, s: char) -> bool {
     match c {
         Character::Char(c) => s == c,
-        Character::Numeral => {
-            let numerals: Vec<_> = (('0' as u8)..(('9' as u8) + 1))
-                .map(|c| c as char)
-                .collect();
-            numerals.contains(&s)
-        },
-
-        Character::Lowercase => {
-            let lowers: Vec<_> = (('a' as u8)..(('z' as u8) + 1))
-                .map(|c| c as char)
-                .collect();
-            lowers.contains(&s)
-        },
-
-        Character::Uppercase => {
-            let uppers: Vec<_> = (('A' as u8)..(('Z' as u8) + 1))
-                .map(|c| c as char)
-                .collect();
-            uppers.contains(&s)
-        },
+        Character::Numeral => "0123456789".contains(s),
+        Character::Lowercase => "abcdefghijklmnopqrstuvwxyz".contains(s),
+        Character::Uppercase => "ABCDEFGHIJKLMNOPQRSTUVWXYZ".contains(s),
     }
 }
 

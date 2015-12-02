@@ -435,8 +435,6 @@ mod tests {
 
     #[test]
     fn it_properly_checks_for_nested_brackets() {
-        // Multipliers in brackets make no sense, but they aren't
-        // ambiguous so we can just ignore them.
         assert!(Expression::new(unsafe_parse("[[lol]]")).is_err());
         assert!(Expression::new(unsafe_parse("[lo[l]]")).is_err());
         assert!(Expression::new(unsafe_parse("([)]")).is_err());
