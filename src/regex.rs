@@ -1,127 +1,38 @@
 use expr::Expression;
+use expr::Character;
 use tokenizer::parse_string;
-
-fn get_prefixes<T: Clone+Copy>(v: &Vec<T>) -> Vec<Vec<T>> {
-    let prefixes: Vec<Vec<T>> = v.iter().scan(Vec::new(), |pv, c| {
-        pv.push(*c);
-        Some(pv.clone())
-    }).collect();
-
-    // Need to stick the empty string on top of it.
-    let mut result = vec![Vec::new()];
-    for prefix in prefixes.iter() {
-        result.push(prefix.clone())
-    }
-    result
-}
 
 fn drop_n<T: Clone>(v: Vec<T>, n: usize) -> Vec<T> {
     v.iter().skip(n).map(|x| x.clone()).collect()
 }
 
-#[allow(dead_code)]
-fn match_expr_slow(e: Expression, s: Vec<char>) -> bool {
-    match e {
-        Expression::Char(c) => s.len() == 1 && c == s[0],
-        Expression::Numeral => {
-            let numerals: Vec<_> = (('0' as u8)..(('9' as u8) + 1)).map(|c| c as char).collect();
-            s.len() == 1 && numerals.contains(&s[0])
-        },
-        Expression::Lowercase => {
-            let lowers: Vec<_> = (('a' as u8)..(('z' as u8) + 1)).map(|c| c as char).collect();
-            s.len() == 1 && lowers.contains(&s[0])
-        },
-        Expression::Uppercase => {
-            let uppers: Vec<_> = (('A' as u8)..(('Z' as u8) + 1)).map(|c| c as char).collect();
-            s.len() == 1 && uppers.contains(&s[0])
+fn match_char(c: Character, s: char) -> bool {
+    match c {
+        Character::Char(c) => s == c,
+        Character::Numeral => {
+            let numerals: Vec<_> = (('0' as u8)..(('9' as u8) + 1))
+                .map(|c| c as char)
+                .collect();
+            numerals.contains(&s)
         },
 
-        Expression::Wildcard => s.len() == 1,
-
-        Expression::Any(exprs) => {
-            if exprs.is_empty() {
-                s.is_empty()
-            } else {
-                exprs.iter().any(move |e| match_expr(e.clone(), s.clone()))
-            }
+        Character::Lowercase => {
+            let lowers: Vec<_> = (('a' as u8)..(('z' as u8) + 1))
+                .map(|c| c as char)
+                .collect();
+            lowers.contains(&s)
         },
 
-        Expression::None(exprs) => !match_expr(Expression::Any(exprs), s),
-        Expression::All(exprs) => {
-
-            // Only the empty string matches empty exprs...
-            if exprs.is_empty() {
-                return s.is_empty();
-            }
-
-            // If s is empty, then maybe it can satisfy each of the exprs in sequence...
-            if s.is_empty() {
-                return exprs.iter().all(|expr| match_expr(expr.clone(), s.clone()))
-            }
-
-            // We can short-circuit this for All's that have only one expr...
-            if exprs.len() == 1 {
-                return match_expr(exprs[0].clone(), s);
-            }
-
-            // Go through each prefix -- if it satisfies the expression AND the
-            // remaining part of the string satisfies the rest of the expressions, then
-            // return true.
-
-            let expr = exprs.first().unwrap(); // Expressions are non-empty
-            for pre in get_prefixes(&s) {
-                let rest_of_s = drop_n(s.clone(), pre.len());
-                let this_is_good = match_expr(expr.clone(), pre);
-                let rest_is_good =
-                    match_expr(Expression::All(drop_n(exprs.clone(), 1)), rest_of_s);
-
-                if this_is_good && rest_is_good { return true }
-            }
-
-            // If we get to here, it means that we couldn't match this expr...
-            false
+        Character::Uppercase => {
+            let uppers: Vec<_> = (('A' as u8)..(('Z' as u8) + 1))
+                .map(|c| c as char)
+                .collect();
+            uppers.contains(&s)
         },
-
-        Expression::NoneOrMore(expr_box) => {
-            // Match it as many times as possible, and if we can't, that's OK.
-            for pre in get_prefixes(&s) {
-                let rest_of_s = drop_n(s.clone(), pre.len());
-
-                if match_expr((*expr_box).clone(), pre) {
-                    return match_expr(Expression::NoneOrMore(expr_box), rest_of_s);
-                }
-            }
-
-            // We better have matched it none times...
-            s.is_empty()
-        },
-
-        Expression::OneOrMore(expr_box) => {
-            // Match it as many times as possible, but we need to match it at least once.
-            if s.is_empty() {
-                return false;
-            }
-
-            for pre in get_prefixes(&s) {
-                let rest_of_s = drop_n(s.clone(), pre.len());
-
-                // If we checked it once, then we need none or more...
-                if match_expr((*expr_box).clone(), pre) {
-                    return match_expr(Expression::NoneOrMore(expr_box), rest_of_s);
-                }
-            }
-
-            // We didn't match it
-            false
-        },
-
-        // Either it's empty (none) or it exactly matches the expr (one)
-        Expression::NoneOrOne(expr_box) =>
-            s.is_empty() || match_expr((*expr_box).clone(), s.clone())
     }
 }
 
-fn match_expr_fast(e: Expression, _s: Vec<char>) -> bool {
+fn match_expr(e: Expression, _s: Vec<char>) -> bool {
     let mut expr_stack = vec![e];
     let mut s = _s.clone();
 
@@ -133,38 +44,8 @@ fn match_expr_fast(e: Expression, _s: Vec<char>) -> bool {
 
         match e {
             Expression::Char(c) => {
-                if s.len() == 0 || s[0] != c {
+                if s.len() == 0 || !match_char(c, s[0]) {
                     return false
-                }
-                s = drop_n(s.clone(), 1);
-            },
-
-            Expression::Numeral => {
-                let numerals: Vec<_> = (('0' as u8)..(('9' as u8) + 1))
-                    .map(|c| c as char)
-                    .collect();
-                if s.len() == 0 || !(numerals.contains(&s[0])) {
-                    return false;
-                }
-                s = drop_n(s.clone(), 1);
-            },
-
-            Expression::Lowercase => {
-                let lowers: Vec<_> = (('a' as u8)..(('z' as u8) + 1))
-                    .map(|c| c as char)
-                    .collect();
-                if s.len() == 0 || !(lowers.contains(&s[0])) {
-                    return false;
-                }
-                s = drop_n(s.clone(), 1);
-            },
-
-            Expression::Uppercase => {
-                let uppers: Vec<_> = (('A' as u8)..(('Z' as u8) + 1))
-                    .map(|c| c as char)
-                    .collect();
-                if s.len() == 0 || !(uppers.contains(&s[0])) {
-                    return false;
                 }
                 s = drop_n(s.clone(), 1);
             },
@@ -174,33 +55,34 @@ fn match_expr_fast(e: Expression, _s: Vec<char>) -> bool {
                     return false;
                 }
                 s = drop_n(s.clone(), 1);
-            }
+            },
             
-            Expression::None(exprs) => {
-                // We have to match at least some character...
-                if !exprs.is_empty() {
+            Expression::None(chars) => {
+                // If there are no chars to match, then we can ignore this
+                if !chars.is_empty() {
+                    // If there are chars to match, then
+                    // we have to match at least some character...
                     if s.is_empty() {
                         return false;
                     } else {
-                        return exprs.iter().all(|expr| {
-                            !match_expr(expr.clone(), vec![s[0]])
-                        });
+                        if chars.iter().any(|c| { match_char(*c, s[0]) }) {
+                            return false;
+                        }
+                        s = drop_n(s.clone(), 1);
                     }
                 } 
             },
 
-            Expression::Any(exprs) => {
-                if exprs.len() <= 1 {
-                    for expr in exprs {
-                        expr_stack.push(expr);
+            Expression::Any(chars) => {
+                if !chars.is_empty() {
+                    if s.is_empty() {
+                        return false;
+                    } else {
+                        if chars.iter().all(|c| { !match_char(*c, s[0]) }) {
+                            return false;
+                        }
+                        s = drop_n(s.clone(), 1);
                     }
-                } else {
-                    return exprs.iter().any(|expr| {
-                        let mut stack = expr_stack.clone();
-                        stack.push(expr.clone());
-                        stack.reverse();
-                        match_expr(Expression::All(stack), s.clone())
-                    });
                 }
             },
 
@@ -261,11 +143,6 @@ fn match_expr_fast(e: Expression, _s: Vec<char>) -> bool {
             return s.is_empty();
         }
     }
-}
-
-
-fn match_expr(e: Expression, s: Vec<char>) -> bool {
-    match_expr_fast(e, s)
 }
 
 pub trait SatisfiesRegex : Sized {
