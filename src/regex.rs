@@ -1,4 +1,4 @@
-//! A crate for using regular expressions.
+//! A module for matching against regular expressions.
 //!
 //! ---
 //!
@@ -232,14 +232,29 @@ fn match_expr(e: Expression, _s: Vec<char>) -> bool {
     }
 }
 
+/// A string is a Regular Expression if it can validate other strings
+/// that are tested against it.
 pub trait IsRegex<T = Self> : Sized {
-    // Returns None on success and an error otherwise.
+    /// Validates a string `s`. If there is an error parsing the regular
+    /// expression, then that is returned. If there is no error, then
+    /// the function returns `None`:
+    ///
+    /// ```
+    ///   use regex::regex::IsRegex;
+    ///   assert_eq!("([)]".is_gracefully_matched_by("hi"),
+    ///              Some("Unexpected closing bracket!"));
+    ///   assert_eq!("hi".is_gracefully_matched_by("hi"), None);
+    /// ```
     fn is_gracefully_matched_by(self, s: T)
                                   -> Option<&'static str>;
+
+    /// This function is the same as `is_gracefully_matched_by` except that
+    /// it returns false on malformed regular expressions
     fn is_matched_by(self, s: T) -> bool {
         None == self.is_gracefully_matched_by(s)
     }
 
+    /// This function is the inverse of `is_matched_by`
     fn is_not_matched_by(self, s: T) -> bool { !self.is_matched_by(s) }
 }
 
@@ -285,6 +300,10 @@ impl<'a> IsRegex<&'a str> for String {
     }
 }
 
+/// `SatisfiesRegex` is the inverse trait to `IsRegex` to be used
+/// depending on whether or not users like saying "regex matches string"
+/// or "string matches regex". This trait is implemented for all implementations
+/// of `IsRegex`.
 pub trait SatisfiesRegex<T = Self> : Sized
     where T : IsRegex<Self> {
     fn matches_regex(self, regex: T) -> bool { regex.is_matched_by(self) }
