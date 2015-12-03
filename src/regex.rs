@@ -193,10 +193,6 @@ fn match_expr(e: Expression, _s: Vec<char>) -> bool {
                     };
 
                     if more { return true; }
-
-                    let mut stack = expr_stack.clone();
-                    stack.reverse();
-                    return match_expr(Expression::All(stack), s.clone());
                 }
             },
 
@@ -218,11 +214,6 @@ fn match_expr(e: Expression, _s: Vec<char>) -> bool {
                 };
 
                 if one { return true; }
-
-                // None?
-                let mut stack = expr_stack.clone();
-                stack.reverse();
-                return match_expr(Expression::All(stack), s.clone());
             },
         }
         

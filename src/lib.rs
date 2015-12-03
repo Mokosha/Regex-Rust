@@ -26,3 +26,11 @@ fn it_can_recognize_phone_numbers() {
     assert!(phone_regex.is_matched_by("1-(800-2222222".to_string()));
     assert!(phone_regex.is_matched_by("1-800)-222 2222".to_string()));
 }
+
+#[test]
+#[ignore]
+fn it_handles_exponential_time() {
+    use regex::IsRegex;
+    assert!("a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*"
+            .is_not_matched_by("aaaaaaaaaaaaaaaaaaaaaaaab"));
+}
