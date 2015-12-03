@@ -1,3 +1,107 @@
+//! A crate for using regular expressions.
+//!
+//! ---
+//!
+//! Although many of the features common to regular expressions are excluded,
+//! this crate does present an initial system of matching against regular
+//! expressions.
+//!
+//! ## Supported expressions:
+//!
+//! String literals:
+//!
+//! ```
+//!   use regex::regex::SatisfiesRegex;
+//!   assert!("hello".is_satisfied_by("hello".to_string()));
+//! ```
+//!
+//! ---
+//! Wildcards
+//!
+//! ```
+//!   use regex::regex::SatisfiesRegex;
+//!   assert!("h.ll.".is_satisfied_by("hello".to_string()));
+//!   assert!("h.ll.".is_satisfied_by("hilly".to_string()));
+//! ```
+//!
+//! ---
+//! None or more
+//!
+//! ```
+//!   use regex::regex::SatisfiesRegex;
+//!   assert!("hello*".is_satisfied_by("hello".to_string()));
+//!   assert!("hello*".is_satisfied_by("hell".to_string()));
+//!   assert!("hello*".is_satisfied_by("helloooooooooooooooooooo".to_string()));
+//!   assert!("h.l*y".is_satisfied_by("hilllllllllly".to_string()));
+//!   assert!("h.l*y".is_satisfied_by("hiy".to_string()));
+//! ```
+//!
+//! ---
+//! One or more
+//!
+//! ```
+//!   use regex::regex::SatisfiesRegex;
+//!   assert!("hel+o".is_satisfied_by("hello".to_string()));
+//!   assert!("hel+o".is_satisfied_by("helo".to_string()));
+//!   assert!("hel+o".is_satisfied_by("hellllllllo".to_string()));
+//!   assert!("hel+o".is_not_satisfied_by("heo".to_string()));
+//! ```
+//!
+//! ---
+//! None or one
+//!
+//! ```
+//!   use regex::regex::SatisfiesRegex;
+//!   assert!("hello? world".is_satisfied_by("hello world".to_string()));
+//!   assert!("hello? world".is_satisfied_by("hell world".to_string()));
+//!   assert!("hello ?world".is_satisfied_by("helloworld".to_string()));
+//!   assert!("hello ?world".is_satisfied_by("hello world".to_string()));
+//!   assert!("hello ?world".is_not_satisfied_by("hell world".to_string()));
+//! ```
+//!
+//! ---
+//! Escaped characters
+//!
+//! ```
+//!   use regex::regex::SatisfiesRegex;
+//!   assert!("hello\\? world".is_satisfied_by("hello? world".to_string()));
+//!   assert!("hello\\? world".is_not_satisfied_by("hell world".to_string()));
+//!   assert!("h.l+.\\? world".is_satisfied_by("hilly? world".to_string()));
+//! ```
+//!
+//! ---
+//! Character sets
+//!
+//! ```
+//!   use regex::regex::SatisfiesRegex;
+//!   assert!("[a-z ]*".is_satisfied_by("hello world".to_string()));
+//!   assert!("[a-z ]*".is_not_satisfied_by("Hello World".to_string()));
+//!   assert!("[a-z ]*".is_not_satisfied_by("hell0 world".to_string()));
+//!   assert!("[0-9a-z ]*".is_satisfied_by("hell0 world".to_string()));
+//!   assert!("[A-Za-z ]*".is_satisfied_by("Hello World".to_string()));
+//!   assert!("[WHerdlo ]+".is_satisfied_by("Hello World".to_string()));
+//!   assert!("[Hello] [World]".is_satisfied_by("H W".to_string()));
+//!   assert!("[Hello] [World]".is_not_satisfied_by("Hello World".to_string()));
+//!
+//!   // To match none of a character set
+//!   assert!("[^A-Za-z ]*".is_satisfied_by("867-5309".to_string()));
+//!   assert!("[^A-Z]+".is_satisfied_by("hello world".to_string()));
+//!   assert!("[^aeiou]+".is_satisfied_by("hll wrld".to_string()));
+//! ```
+//!
+//! ---
+//! Subexpressions
+//!
+//! ```
+//!   use regex::regex::SatisfiesRegex;
+//!   assert!("(lu)+-lemon".is_satisfied_by("lulu-lemon".to_string()));
+//!   assert!("(na )+batman!".is_satisfied_by(
+//!     "na na na na na na na na batman!".to_string()));
+//!   assert!("ba([a-z]i[0-9])?tman!".is_satisfied_by("batman!".to_string()));
+//!   assert!("ba([a-z]i[0-9])?tman!".is_satisfied_by("baai9tman!".to_string()));
+//!   assert!("ba([a-z]i[0-9])?tman!".is_not_satisfied_by("baaitman!".to_string()));
+//! ```
+
 use expr::Expression;
 use expr::Character;
 use tokenizer::parse_string;

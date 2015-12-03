@@ -2,3 +2,7 @@
 name = "regex"
 version = "0.1.0"
 authors = ["Pavel Krajcevski <Krajcevski@gmail.com>"]
+
+[[bin]]
+name = "main"
+doc = false
