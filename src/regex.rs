@@ -12,7 +12,7 @@
 //!
 //! ```
 //!   use regex::regex::SatisfiesRegex;
-//!   assert!("hello".is_satisfied_by("hello".to_string()));
+//!   assert!("hello".matches_regex("hello"));
 //! ```
 //!
 //! ---
@@ -20,86 +20,86 @@
 //!
 //! ```
 //!   use regex::regex::SatisfiesRegex;
-//!   assert!("h.ll.".is_satisfied_by("hello".to_string()));
-//!   assert!("h.ll.".is_satisfied_by("hilly".to_string()));
+//!   assert!("hello".matches_regex("h.ll."));
+//!   assert!("hilly".matches_regex("h.ll."));
 //! ```
 //!
 //! ---
 //! None or more
 //!
 //! ```
-//!   use regex::regex::SatisfiesRegex;
-//!   assert!("hello*".is_satisfied_by("hello".to_string()));
-//!   assert!("hello*".is_satisfied_by("hell".to_string()));
-//!   assert!("hello*".is_satisfied_by("helloooooooooooooooooooo".to_string()));
-//!   assert!("h.l*y".is_satisfied_by("hilllllllllly".to_string()));
-//!   assert!("h.l*y".is_satisfied_by("hiy".to_string()));
+//!   use regex::regex::IsRegex;
+//!   assert!("hello*".is_matched_by("hello"));
+//!   assert!("hello*".is_matched_by("hell"));
+//!   assert!("hello*".is_matched_by("helloooooooooooooooooooo"));
+//!   assert!("h.l*y".is_matched_by("hilllllllllly"));
+//!   assert!("h.l*y".is_matched_by("hiy"));
 //! ```
 //!
 //! ---
 //! One or more
 //!
 //! ```
-//!   use regex::regex::SatisfiesRegex;
-//!   assert!("hel+o".is_satisfied_by("hello".to_string()));
-//!   assert!("hel+o".is_satisfied_by("helo".to_string()));
-//!   assert!("hel+o".is_satisfied_by("hellllllllo".to_string()));
-//!   assert!("hel+o".is_not_satisfied_by("heo".to_string()));
+//!   use regex::regex::IsRegex;
+//!   assert!("hel+o".is_matched_by("hello"));
+//!   assert!("hel+o".is_matched_by("helo"));
+//!   assert!("hel+o".is_matched_by("hellllllllo"));
+//!   assert!("hel+o".is_not_matched_by("heo"));
 //! ```
 //!
 //! ---
 //! None or one
 //!
 //! ```
-//!   use regex::regex::SatisfiesRegex;
-//!   assert!("hello? world".is_satisfied_by("hello world".to_string()));
-//!   assert!("hello? world".is_satisfied_by("hell world".to_string()));
-//!   assert!("hello ?world".is_satisfied_by("helloworld".to_string()));
-//!   assert!("hello ?world".is_satisfied_by("hello world".to_string()));
-//!   assert!("hello ?world".is_not_satisfied_by("hell world".to_string()));
+//!   use regex::regex::IsRegex;
+//!   assert!("hello? world".is_matched_by("hello world"));
+//!   assert!("hello? world".is_matched_by("hell world"));
+//!   assert!("hello ?world".is_matched_by("helloworld"));
+//!   assert!("hello ?world".is_matched_by("hello world"));
+//!   assert!("hello ?world".is_not_matched_by("hell world"));
 //! ```
 //!
 //! ---
 //! Escaped characters
 //!
 //! ```
-//!   use regex::regex::SatisfiesRegex;
-//!   assert!("hello\\? world".is_satisfied_by("hello? world".to_string()));
-//!   assert!("hello\\? world".is_not_satisfied_by("hell world".to_string()));
-//!   assert!("h.l+.\\? world".is_satisfied_by("hilly? world".to_string()));
+//!   use regex::regex::IsRegex;
+//!   assert!("hello\\? world".is_matched_by("hello? world"));
+//!   assert!("hello\\? world".is_not_matched_by("hell world"));
+//!   assert!("h.l+.\\? world".is_matched_by("hilly? world"));
 //! ```
 //!
 //! ---
 //! Character sets
 //!
 //! ```
-//!   use regex::regex::SatisfiesRegex;
-//!   assert!("[a-z ]*".is_satisfied_by("hello world".to_string()));
-//!   assert!("[a-z ]*".is_not_satisfied_by("Hello World".to_string()));
-//!   assert!("[a-z ]*".is_not_satisfied_by("hell0 world".to_string()));
-//!   assert!("[0-9a-z ]*".is_satisfied_by("hell0 world".to_string()));
-//!   assert!("[A-Za-z ]*".is_satisfied_by("Hello World".to_string()));
-//!   assert!("[WHerdlo ]+".is_satisfied_by("Hello World".to_string()));
-//!   assert!("[Hello] [World]".is_satisfied_by("H W".to_string()));
-//!   assert!("[Hello] [World]".is_not_satisfied_by("Hello World".to_string()));
+//!   use regex::regex::IsRegex;
+//!   assert!("[a-z ]*".is_matched_by("hello world"));
+//!   assert!("[a-z ]*".is_not_matched_by("Hello World"));
+//!   assert!("[a-z ]*".is_not_matched_by("hell0 world"));
+//!   assert!("[0-9a-z ]*".is_matched_by("hell0 world"));
+//!   assert!("[A-Za-z ]*".is_matched_by("Hello World"));
+//!   assert!("[WHerdlo ]+".is_matched_by("Hello World"));
+//!   assert!("[Hello] [World]".is_matched_by("H W"));
+//!   assert!("[Hello] [World]".is_not_matched_by("Hello World"));
 //!
 //!   // To match none of a character set
-//!   assert!("[^A-Za-z ]*".is_satisfied_by("867-5309".to_string()));
-//!   assert!("[^A-Z]+".is_satisfied_by("hello world".to_string()));
-//!   assert!("[^aeiou]+".is_satisfied_by("hll wrld".to_string()));
+//!   assert!("[^A-Za-z ]*".is_matched_by("867-5309"));
+//!   assert!("[^A-Z]+".is_matched_by("hello world"));
+//!   assert!("[^aeiou]+".is_matched_by("hll wrld"));
 //! ```
 //!
 //! ---
 //! Subexpressions
 //!
 //! ```
-//!   use regex::regex::SatisfiesRegex;
-//!   assert!("(lu)+-lemon".is_satisfied_by("lulu-lemon".to_string()));
-//!   assert!("(na )+batman!".is_satisfied_by(
-//!     "na na na na na na na na batman!".to_string()));
-//!   assert!("ba([a-z]i[0-9])?tman!".is_satisfied_by("batman!".to_string()));
-//!   assert!("ba([a-z]i[0-9])?tman!".is_satisfied_by("baai9tman!".to_string()));
-//!   assert!("ba([a-z]i[0-9])?tman!".is_not_satisfied_by("baaitman!".to_string()));
+//!   use regex::regex::IsRegex;
+//!   assert!("(lu)+-lemon".is_matched_by("lulu-lemon"));
+//!   assert!("(na )+batman!".is_matched_by(
+//!     "na na na na na na na na batman!"));
+//!   assert!("ba([a-z]i[0-9])?tman!".is_matched_by("batman!"));
+//!   assert!("ba([a-z]i[0-9])?tman!".is_matched_by("baai9tman!"));
+//!   assert!("ba([a-z]i[0-9])?tman!".is_not_matched_by("baaitman!"));
 //! ```
 
 use expr::Expression;
@@ -232,19 +232,19 @@ fn match_expr(e: Expression, _s: Vec<char>) -> bool {
     }
 }
 
-pub trait SatisfiesRegex : Sized {
+pub trait IsRegex<T = Self> : Sized {
     // Returns None on success and an error otherwise.
-    fn is_gracefully_satisfied_by(self, s: String)
+    fn is_gracefully_matched_by(self, s: T)
                                   -> Option<&'static str>;
-    fn is_satisfied_by(self, s: String) -> bool {
-        None == self.is_gracefully_satisfied_by(s)
+    fn is_matched_by(self, s: T) -> bool {
+        None == self.is_gracefully_matched_by(s)
     }
 
-    fn is_not_satisfied_by(self, s: String) -> bool { !self.is_satisfied_by(s) }
+    fn is_not_matched_by(self, s: T) -> bool { !self.is_matched_by(s) }
 }
 
-impl SatisfiesRegex for String {
-    fn is_gracefully_satisfied_by(self, s: String)
+impl IsRegex for String {
+    fn is_gracefully_matched_by(self, s: String)
                                   -> Option<&'static str> {
         let tokens = match parse_string(self) {
             Err(e) => return Some(e),
@@ -264,12 +264,36 @@ impl SatisfiesRegex for String {
     }
 }
 
-impl<'a> SatisfiesRegex for &'a str {
-    fn is_gracefully_satisfied_by(self, s: String)
+impl<'a, 'b> IsRegex<&'b str> for &'a str {
+    fn is_gracefully_matched_by(self, s: &'b str)
                                   -> Option<&'static str> {
-        String::from(self).is_gracefully_satisfied_by(s)
+        self.to_string().is_gracefully_matched_by(s.to_string())
     }
 }
+
+impl<'a> IsRegex<String> for &'a str {
+    fn is_gracefully_matched_by(self, s: String)
+                                  -> Option<&'static str> {
+        String::from(self).is_gracefully_matched_by(s)
+    }
+}
+
+impl<'a> IsRegex<&'a str> for String {
+    fn is_gracefully_matched_by(self, s: &'a str)
+                                  -> Option<&'static str> {
+        self.is_gracefully_matched_by(s.to_string())
+    }
+}
+
+pub trait SatisfiesRegex<T = Self> : Sized
+    where T : IsRegex<Self> {
+    fn matches_regex(self, regex: T) -> bool { regex.is_matched_by(self) }
+}
+
+impl SatisfiesRegex for String { }
+impl<'a> SatisfiesRegex<&'a str> for String { }
+impl<'a> SatisfiesRegex<String> for &'a str { }
+impl<'a, 'b> SatisfiesRegex<&'b str> for &'a str { }
 
 #[cfg(test)]
 mod tests {
@@ -277,319 +301,319 @@ mod tests {
 
     #[test]
     fn it_can_match_literals() {
-        assert!("aaaaa".is_satisfied_by(String::from("aaaaa")));
-        assert!("aaaaa".is_not_satisfied_by(String::from("abaaa")));
-        assert!("hello".is_satisfied_by(String::from("hello")));
-        assert!("it's me".is_satisfied_by(String::from("it's me")));
+        assert!("aaaaa".is_matched_by(String::from("aaaaa")));
+        assert!("aaaaa".is_not_matched_by(String::from("abaaa")));
+        assert!("hello".is_matched_by(String::from("hello")));
+        assert!("it's me".is_matched_by(String::from("it's me")));
 
         // These characters aren't special.
-        assert!("!@#$%^&&".is_satisfied_by(String::from("!@#$%^&&")));
-        assert!("\\*\\*\\*\\*".is_satisfied_by(String::from("****")));
-        assert!("\\*\\*\\*\\*".is_not_satisfied_by(String::from("help")));
+        assert!("!@#$%^&&".is_matched_by(String::from("!@#$%^&&")));
+        assert!("\\*\\*\\*\\*".is_matched_by(String::from("****")));
+        assert!("\\*\\*\\*\\*".is_not_matched_by(String::from("help")));
     }
 
     #[test]
     fn it_can_match_wildcards() {
-        assert!(".....".is_satisfied_by(String::from("hello")));
-        assert!(".....".is_satisfied_by(String::from("great")));
-        assert!(".u.e".is_satisfied_by(String::from("puce")));
-        assert!(".u.e".is_satisfied_by(String::from("lute")));
+        assert!(".....".is_matched_by(String::from("hello")));
+        assert!(".....".is_matched_by(String::from("great")));
+        assert!(".u.e".is_matched_by(String::from("puce")));
+        assert!(".u.e".is_matched_by(String::from("lute")));
 
-        assert!("....".is_not_satisfied_by(String::from("sorry")));
-        assert!(".u.e".is_not_satisfied_by(String::from("flute")));
+        assert!("....".is_not_matched_by(String::from("sorry")));
+        assert!(".u.e".is_not_matched_by(String::from("flute")));
     }
 
     #[test]
     fn it_can_match_none_or_more() {
-        assert!(".*".is_satisfied_by(String::from("everything")));
-        assert!(".*".is_satisfied_by(String::from("seriously, everything")));
-        assert!(".*".is_satisfied_by(String::from("I can do so many weird things here")));
-        assert!(".*".is_satisfied_by(String::from("M4yb3 l33t sp33k?")));
-        assert!(".*".is_satisfied_by(String::from("Even the empty string:")));
-        assert!(".*".is_satisfied_by(String::from("")));
-        assert!(".*".is_satisfied_by(String::from("... wow")));
+        assert!(".*".is_matched_by(String::from("everything")));
+        assert!(".*".is_matched_by(String::from("seriously, everything")));
+        assert!(".*".is_matched_by(String::from("I can do so many weird things here")));
+        assert!(".*".is_matched_by(String::from("M4yb3 l33t sp33k?")));
+        assert!(".*".is_matched_by(String::from("Even the empty string:")));
+        assert!(".*".is_matched_by(String::from("")));
+        assert!(".*".is_matched_by(String::from("... wow")));
 
         // Actually, we should be able to catch the empty string always with char*:
-        assert!("a*".is_satisfied_by(String::from("")));
-        assert!("\\+*".is_satisfied_by(String::from("")));
-        assert!("!*".is_satisfied_by(String::from("")));
-        assert!("#*".is_satisfied_by(String::from("")));
+        assert!("a*".is_matched_by(String::from("")));
+        assert!("\\+*".is_matched_by(String::from("")));
+        assert!("!*".is_matched_by(String::from("")));
+        assert!("#*".is_matched_by(String::from("")));
 
         // Maybe we should try a few more::
-        assert!("ab*a".is_satisfied_by(String::from("aa")));
-        assert!("ab*a".is_satisfied_by(String::from("abba")));
-        assert!("ab*a".is_satisfied_by(String::from("aba")));
-        assert!("ab*a".is_satisfied_by(String::from("abbbbbbbbbbbbbbbbbbbbbbbbbbbbba")));
+        assert!("ab*a".is_matched_by(String::from("aa")));
+        assert!("ab*a".is_matched_by(String::from("abba")));
+        assert!("ab*a".is_matched_by(String::from("aba")));
+        assert!("ab*a".is_matched_by(String::from("abbbbbbbbbbbbbbbbbbbbbbbbbbbbba")));
 
-        assert!("ab*".is_satisfied_by(String::from("a")));
-        assert!("ab*".is_satisfied_by(String::from("abb")));
-        assert!("ab*".is_satisfied_by(String::from("ab")));
-        assert!("ab*".is_satisfied_by(String::from("abbbbbbbbbbbbbbbbbbbbbbbbbbbbb")));
+        assert!("ab*".is_matched_by(String::from("a")));
+        assert!("ab*".is_matched_by(String::from("abb")));
+        assert!("ab*".is_matched_by(String::from("ab")));
+        assert!("ab*".is_matched_by(String::from("abbbbbbbbbbbbbbbbbbbbbbbbbbbbb")));
 
-        assert!("b*a".is_satisfied_by(String::from("a")));
-        assert!("b*a".is_satisfied_by(String::from("bba")));
-        assert!("b*a".is_satisfied_by(String::from("ba")));
-        assert!("b*a".is_satisfied_by(String::from("bbbbbbbbbbbbbbbbbbbbbbbbbbbbba")));
+        assert!("b*a".is_matched_by(String::from("a")));
+        assert!("b*a".is_matched_by(String::from("bba")));
+        assert!("b*a".is_matched_by(String::from("ba")));
+        assert!("b*a".is_matched_by(String::from("bbbbbbbbbbbbbbbbbbbbbbbbbbbbba")));
 
-        assert!("b*a".is_not_satisfied_by(String::from("aa")));
-        assert!("b*a".is_not_satisfied_by(String::from("ab")));
-        assert!("b*a".is_not_satisfied_by(String::from("bab")));
-        assert!("b*a".is_not_satisfied_by(String::from("bbbabbbbbbbbbbbbbbbbbbbbbbbbb")));
+        assert!("b*a".is_not_matched_by(String::from("aa")));
+        assert!("b*a".is_not_matched_by(String::from("ab")));
+        assert!("b*a".is_not_matched_by(String::from("bab")));
+        assert!("b*a".is_not_matched_by(String::from("bbbabbbbbbbbbbbbbbbbbbbbbbbbb")));
 
         // Only the empty string satisfies this...
-        assert!("*".is_satisfied_by(String::from("")));
-        assert!("*".is_not_satisfied_by(String::from("a")));
-        assert!("*".is_not_satisfied_by(String::from("c")));
-        assert!("*".is_not_satisfied_by(String::from("anything else, really")));
+        assert!("*".is_matched_by(String::from("")));
+        assert!("*".is_not_matched_by(String::from("a")));
+        assert!("*".is_not_matched_by(String::from("c")));
+        assert!("*".is_not_matched_by(String::from("anything else, really")));
 
         // Just playing with escaped special chars now
-        assert!("\\+*".is_satisfied_by(String::from("++++++++++++++++++++++++++")));
-        assert!("\\+*".is_satisfied_by(String::from("+")));
-        assert!("\\?*".is_satisfied_by(String::from("??????????????????????????")));
-        assert!("\\?*".is_satisfied_by(String::from("?")));
-        assert!("\\**".is_satisfied_by(String::from("**************************")));
-        assert!("\\**".is_satisfied_by(String::from("*")));
+        assert!("\\+*".is_matched_by(String::from("++++++++++++++++++++++++++")));
+        assert!("\\+*".is_matched_by(String::from("+")));
+        assert!("\\?*".is_matched_by(String::from("??????????????????????????")));
+        assert!("\\?*".is_matched_by(String::from("?")));
+        assert!("\\**".is_matched_by(String::from("**************************")));
+        assert!("\\**".is_matched_by(String::from("*")));
 
-        assert!("0-9*".is_satisfied_by(String::from("0-")));
-        assert!("0-9*".is_satisfied_by(String::from("0-9")));
-        assert!("0-9*".is_satisfied_by(String::from("0-99999999")));
-        assert!("0-9*".is_not_satisfied_by(String::from("7")));
+        assert!("0-9*".is_matched_by(String::from("0-")));
+        assert!("0-9*".is_matched_by(String::from("0-9")));
+        assert!("0-9*".is_matched_by(String::from("0-99999999")));
+        assert!("0-9*".is_not_matched_by(String::from("7")));
     }
 
     #[test]
     fn it_can_match_one_or_more() {
-        assert!(".+".is_satisfied_by(String::from("Basically anything")));
-        assert!(".+".is_satisfied_by(String::from("well, not anything")));
-        assert!(".+".is_satisfied_by(String::from("anything except (!) for the empty string")));
-        assert!(".+".is_not_satisfied_by(String::from("")));
-        assert!(".+".is_satisfied_by(String::from("Even single letters count:")));
-        assert!(".+".is_satisfied_by(String::from("t")));
-        assert!(".+".is_satisfied_by(String::from("See?")));
+        assert!(".+".is_matched_by(String::from("Basically anything")));
+        assert!(".+".is_matched_by(String::from("well, not anything")));
+        assert!(".+".is_matched_by(String::from("anything except (!) for the empty string")));
+        assert!(".+".is_not_matched_by(String::from("")));
+        assert!(".+".is_matched_by(String::from("Even single letters count:")));
+        assert!(".+".is_matched_by(String::from("t")));
+        assert!(".+".is_matched_by(String::from("See?")));
 
-        assert!("ab+a".is_not_satisfied_by(String::from("aa")));
-        assert!("ab+a".is_satisfied_by(String::from("abba")));
-        assert!("ab+a".is_satisfied_by(String::from("aba")));
-        assert!("ab+a".is_satisfied_by(String::from("abbbbbbbbbbbbbbbbbbbbbbbbbbbbba")));
+        assert!("ab+a".is_not_matched_by(String::from("aa")));
+        assert!("ab+a".is_matched_by(String::from("abba")));
+        assert!("ab+a".is_matched_by(String::from("aba")));
+        assert!("ab+a".is_matched_by(String::from("abbbbbbbbbbbbbbbbbbbbbbbbbbbbba")));
 
-        assert!("ab+".is_not_satisfied_by(String::from("a")));
-        assert!("ab+".is_satisfied_by(String::from("abb")));
-        assert!("ab+".is_satisfied_by(String::from("ab")));
-        assert!("ab+".is_satisfied_by(String::from("abbbbbbbbbbbbbbbbbbbbbbbbbbbbb")));
+        assert!("ab+".is_not_matched_by(String::from("a")));
+        assert!("ab+".is_matched_by(String::from("abb")));
+        assert!("ab+".is_matched_by(String::from("ab")));
+        assert!("ab+".is_matched_by(String::from("abbbbbbbbbbbbbbbbbbbbbbbbbbbbb")));
 
-        assert!("b+a".is_not_satisfied_by(String::from("a")));
-        assert!("b+a".is_satisfied_by(String::from("bba")));
-        assert!("b+a".is_satisfied_by(String::from("ba")));
-        assert!("b+a".is_satisfied_by(String::from("bbbbbbbbbbbbbbbbbbbbbbbbbbbbba")));
+        assert!("b+a".is_not_matched_by(String::from("a")));
+        assert!("b+a".is_matched_by(String::from("bba")));
+        assert!("b+a".is_matched_by(String::from("ba")));
+        assert!("b+a".is_matched_by(String::from("bbbbbbbbbbbbbbbbbbbbbbbbbbbbba")));
 
-        assert!("b+a".is_not_satisfied_by(String::from("aa")));
-        assert!("b+a".is_not_satisfied_by(String::from("ab")));
-        assert!("b+a".is_not_satisfied_by(String::from("bab")));
-        assert!("b+a".is_not_satisfied_by(String::from("bbbabbbbbbbbbbbbbbbbbbbbbbbbb")));
+        assert!("b+a".is_not_matched_by(String::from("aa")));
+        assert!("b+a".is_not_matched_by(String::from("ab")));
+        assert!("b+a".is_not_matched_by(String::from("bab")));
+        assert!("b+a".is_not_matched_by(String::from("bbbabbbbbbbbbbbbbbbbbbbbbbbbb")));
 
-        assert!("b+ab++".is_satisfied_by(String::from("bab")));
-        assert!("b+ab++".is_satisfied_by(String::from("bbbbbabbb")));
-        assert!("b+ab++".is_not_satisfied_by(String::from("bbbbbaabbb")));
+        assert!("b+ab++".is_matched_by(String::from("bab")));
+        assert!("b+ab++".is_matched_by(String::from("bbbbbabbb")));
+        assert!("b+ab++".is_not_matched_by(String::from("bbbbbaabbb")));
 
         // Only the empty string satisfies this...
-        assert!("+".is_satisfied_by(String::from("")));
-        assert!("+".is_not_satisfied_by(String::from("a")));
-        assert!("+".is_not_satisfied_by(String::from("c")));
-        assert!("+".is_not_satisfied_by(String::from("anything else, really")));
+        assert!("+".is_matched_by(String::from("")));
+        assert!("+".is_not_matched_by(String::from("a")));
+        assert!("+".is_not_matched_by(String::from("c")));
+        assert!("+".is_not_matched_by(String::from("anything else, really")));
 
         // Just playing with escaped special chars now
-        assert!("\\++".is_satisfied_by(String::from("++++++++++++++++++++++++++")));
-        assert!("\\++".is_satisfied_by(String::from("+")));
+        assert!("\\++".is_matched_by(String::from("++++++++++++++++++++++++++")));
+        assert!("\\++".is_matched_by(String::from("+")));
 
-        assert!("0-9+".is_not_satisfied_by(String::from("0-")));
-        assert!("0-9+".is_satisfied_by(String::from("0-9")));
-        assert!("0-9+".is_satisfied_by(String::from("0-99999999")));
-        assert!("0-9+".is_not_satisfied_by(String::from("7")));
+        assert!("0-9+".is_not_matched_by(String::from("0-")));
+        assert!("0-9+".is_matched_by(String::from("0-9")));
+        assert!("0-9+".is_matched_by(String::from("0-99999999")));
+        assert!("0-9+".is_not_matched_by(String::from("7")));
 
         // Let's mix some together
-        assert!("o*-9+".is_satisfied_by(String::from("-9")));
-        assert!("o*-9+".is_satisfied_by(String::from("-99999999")));
-        assert!("o*-9+".is_satisfied_by(String::from("oooooooo-9")));
-        assert!("o*-9+".is_satisfied_by(String::from("oooooooo-999999")));
-        assert!("o*-9+".is_not_satisfied_by(String::from("o-")));
+        assert!("o*-9+".is_matched_by(String::from("-9")));
+        assert!("o*-9+".is_matched_by(String::from("-99999999")));
+        assert!("o*-9+".is_matched_by(String::from("oooooooo-9")));
+        assert!("o*-9+".is_matched_by(String::from("oooooooo-999999")));
+        assert!("o*-9+".is_not_matched_by(String::from("o-")));
     }
 
     #[test]
     fn it_can_match_none_or_one() {
-        assert!(".?".is_not_satisfied_by(String::from("words")));
-        assert!(".?".is_not_satisfied_by(String::from("not letters")));
-        assert!(".?".is_satisfied_by(String::from("")));
-        assert!(".?".is_satisfied_by(String::from("a")));
-        assert!(".?".is_satisfied_by(String::from("z")));
-        assert!(".?".is_satisfied_by(String::from("!")));
-        assert!(".?".is_satisfied_by(String::from("+")));
+        assert!(".?".is_not_matched_by(String::from("words")));
+        assert!(".?".is_not_matched_by(String::from("not letters")));
+        assert!(".?".is_matched_by(String::from("")));
+        assert!(".?".is_matched_by(String::from("a")));
+        assert!(".?".is_matched_by(String::from("z")));
+        assert!(".?".is_matched_by(String::from("!")));
+        assert!(".?".is_matched_by(String::from("+")));
 
-        assert!("ab?a".is_satisfied_by(String::from("aa")));
-        assert!("ab?a".is_not_satisfied_by(String::from("abba")));
-        assert!("ab?a".is_satisfied_by(String::from("aba")));
-        assert!("ab?a".is_not_satisfied_by(String::from("abbbbbbbbbbbbbbbbbbbbbbbbbbbbba")));
+        assert!("ab?a".is_matched_by(String::from("aa")));
+        assert!("ab?a".is_not_matched_by(String::from("abba")));
+        assert!("ab?a".is_matched_by(String::from("aba")));
+        assert!("ab?a".is_not_matched_by(String::from("abbbbbbbbbbbbbbbbbbbbbbbbbbbbba")));
 
-        assert!("ab?".is_satisfied_by(String::from("a")));
-        assert!("ab?".is_not_satisfied_by(String::from("abb")));
-        assert!("ab?".is_satisfied_by(String::from("ab")));
-        assert!("ab?".is_not_satisfied_by(String::from("abbbbbbbbbbbbbbbbbbbbbbbbbbbbb")));
+        assert!("ab?".is_matched_by(String::from("a")));
+        assert!("ab?".is_not_matched_by(String::from("abb")));
+        assert!("ab?".is_matched_by(String::from("ab")));
+        assert!("ab?".is_not_matched_by(String::from("abbbbbbbbbbbbbbbbbbbbbbbbbbbbb")));
 
-        assert!("b?a".is_satisfied_by(String::from("a")));
-        assert!("b?a".is_not_satisfied_by(String::from("bba")));
-        assert!("b?a".is_satisfied_by(String::from("ba")));
-        assert!("b?a".is_not_satisfied_by(String::from("bbbbbbbbbbbbbbbbbbbbbbbbbbbbba")));
+        assert!("b?a".is_matched_by(String::from("a")));
+        assert!("b?a".is_not_matched_by(String::from("bba")));
+        assert!("b?a".is_matched_by(String::from("ba")));
+        assert!("b?a".is_not_matched_by(String::from("bbbbbbbbbbbbbbbbbbbbbbbbbbbbba")));
 
-        assert!("b?a".is_not_satisfied_by(String::from("aa")));
-        assert!("b?a".is_not_satisfied_by(String::from("ab")));
-        assert!("b?a".is_not_satisfied_by(String::from("bab")));
-        assert!("b?a".is_not_satisfied_by(String::from("bbbabbbbbbbbbbbbbbbbbbbbbbbbb")));
+        assert!("b?a".is_not_matched_by(String::from("aa")));
+        assert!("b?a".is_not_matched_by(String::from("ab")));
+        assert!("b?a".is_not_matched_by(String::from("bab")));
+        assert!("b?a".is_not_matched_by(String::from("bbbabbbbbbbbbbbbbbbbbbbbbbbbb")));
 
-        assert!("b?ab??".is_satisfied_by(String::from("bab")));
-        assert!("b?ab??".is_satisfied_by(String::from("ab")));
-        assert!("b?ab??".is_satisfied_by(String::from("ba")));
-        assert!("b?ab??".is_satisfied_by(String::from("a")));
-        assert!("b?ab??".is_not_satisfied_by(String::from("bbbbbabbb")));
-        assert!("b?ab??".is_not_satisfied_by(String::from("bbbbbaabbb")));
+        assert!("b?ab??".is_matched_by(String::from("bab")));
+        assert!("b?ab??".is_matched_by(String::from("ab")));
+        assert!("b?ab??".is_matched_by(String::from("ba")));
+        assert!("b?ab??".is_matched_by(String::from("a")));
+        assert!("b?ab??".is_not_matched_by(String::from("bbbbbabbb")));
+        assert!("b?ab??".is_not_matched_by(String::from("bbbbbaabbb")));
 
         // Only the empty string satisfies this...
-        assert!("?".is_satisfied_by(String::from("")));
-        assert!("?".is_not_satisfied_by(String::from("a")));
-        assert!("?".is_not_satisfied_by(String::from("c")));
-        assert!("?".is_not_satisfied_by(String::from("anything else, really")));
+        assert!("?".is_matched_by(String::from("")));
+        assert!("?".is_not_matched_by(String::from("a")));
+        assert!("?".is_not_matched_by(String::from("c")));
+        assert!("?".is_not_matched_by(String::from("anything else, really")));
 
         // Just playing with escaped special chars now
-        assert!("\\??".is_not_satisfied_by(String::from("??????????????????????????")));
-        assert!("\\??".is_satisfied_by(String::from("?")));
-        assert!("\\??".is_satisfied_by(String::from("")));
+        assert!("\\??".is_not_matched_by(String::from("??????????????????????????")));
+        assert!("\\??".is_matched_by(String::from("?")));
+        assert!("\\??".is_matched_by(String::from("")));
 
-        assert!("0-9?".is_satisfied_by(String::from("0-")));
-        assert!("0-9?".is_satisfied_by(String::from("0-9")));
-        assert!("0-9?".is_not_satisfied_by(String::from("0-99999999")));
-        assert!("0-9?".is_not_satisfied_by(String::from("7")));
-        assert!("0-9?".is_not_satisfied_by(String::from("")));
+        assert!("0-9?".is_matched_by(String::from("0-")));
+        assert!("0-9?".is_matched_by(String::from("0-9")));
+        assert!("0-9?".is_not_matched_by(String::from("0-99999999")));
+        assert!("0-9?".is_not_matched_by(String::from("7")));
+        assert!("0-9?".is_not_matched_by(String::from("")));
 
         // Let's mix some together
-        assert!("o*-9?".is_satisfied_by(String::from("-9")));
-        assert!("o+-9?".is_not_satisfied_by(String::from("o-99999999")));
-        assert!("o*-9?".is_satisfied_by(String::from("oooooooo-9")));
-        assert!("o*-9?".is_not_satisfied_by(String::from("oooooooo-999999")));
-        assert!("o*-9?".is_satisfied_by(String::from("o-")));
+        assert!("o*-9?".is_matched_by(String::from("-9")));
+        assert!("o+-9?".is_not_matched_by(String::from("o-99999999")));
+        assert!("o*-9?".is_matched_by(String::from("oooooooo-9")));
+        assert!("o*-9?".is_not_matched_by(String::from("oooooooo-999999")));
+        assert!("o*-9?".is_matched_by(String::from("o-")));
     }
 
     #[test]
     fn matches_anything_in_brackets() {
         // Basics?
-        assert!("[]".is_satisfied_by(String::from("")));
-        assert!("[]".is_not_satisfied_by(String::from("a")));
-        assert!("[a]".is_not_satisfied_by(String::from("")));
-        assert!("[a]".is_satisfied_by(String::from("a")));
-        assert!("[a]".is_not_satisfied_by(String::from("aa")));
-        assert!("a[]".is_not_satisfied_by(String::from("")));
-        assert!("a[]".is_satisfied_by(String::from("a")));
-        assert!("a[]".is_not_satisfied_by(String::from("aa")));
-        assert!("[]a".is_not_satisfied_by(String::from("")));
-        assert!("[]a".is_satisfied_by(String::from("a")));
-        assert!("[]a".is_not_satisfied_by(String::from("aa")));
+        assert!("[]".is_matched_by(String::from("")));
+        assert!("[]".is_not_matched_by(String::from("a")));
+        assert!("[a]".is_not_matched_by(String::from("")));
+        assert!("[a]".is_matched_by(String::from("a")));
+        assert!("[a]".is_not_matched_by(String::from("aa")));
+        assert!("a[]".is_not_matched_by(String::from("")));
+        assert!("a[]".is_matched_by(String::from("a")));
+        assert!("a[]".is_not_matched_by(String::from("aa")));
+        assert!("[]a".is_not_matched_by(String::from("")));
+        assert!("[]a".is_matched_by(String::from("a")));
+        assert!("[]a".is_not_matched_by(String::from("aa")));
 
-        assert!("[a]*".is_satisfied_by(String::from("aa")));
-        assert!("[a]*".is_satisfied_by(String::from("")));
-        assert!("[a]*".is_satisfied_by(String::from("aaaaaaaaa")));
+        assert!("[a]*".is_matched_by(String::from("aa")));
+        assert!("[a]*".is_matched_by(String::from("")));
+        assert!("[a]*".is_matched_by(String::from("aaaaaaaaa")));
 
-        assert!("[ab]*".is_satisfied_by(String::from("abaabbbbabaaaab")));
-        assert!("[ab]*".is_satisfied_by(String::from("")));
-        assert!("[ab]*".is_satisfied_by(String::from("aaaaaaaaaa")));
-        assert!("[ab]*".is_satisfied_by(String::from("bbbbbbbbbb")));
-        assert!("[ab]*".is_not_satisfied_by(String::from("bbbcbbbbbb")));
+        assert!("[ab]*".is_matched_by(String::from("abaabbbbabaaaab")));
+        assert!("[ab]*".is_matched_by(String::from("")));
+        assert!("[ab]*".is_matched_by(String::from("aaaaaaaaaa")));
+        assert!("[ab]*".is_matched_by(String::from("bbbbbbbbbb")));
+        assert!("[ab]*".is_not_matched_by(String::from("bbbcbbbbbb")));
 
         // Check ranges
-        assert!("[0-9]*".is_satisfied_by(String::from("8675309")));
-        assert!("[ a-z]*".is_satisfied_by(String::from("now i can write things")));
-        assert!("[ a-zA-Z]*".is_satisfied_by(String::from("now I can write things")));
-        assert!("[ :a-z]+".is_satisfied_by(String::from("alphabet: abcdefghijklmnopqrstuvxyz")));
-        assert!("[a-z]*".is_satisfied_by(String::from("")));
-        assert!("[a-z+]*".is_satisfied_by(String::from(""))); // Ignore special characters in brackets
+        assert!("[0-9]*".is_matched_by(String::from("8675309")));
+        assert!("[ a-z]*".is_matched_by(String::from("now i can write things")));
+        assert!("[ a-zA-Z]*".is_matched_by(String::from("now I can write things")));
+        assert!("[ :a-z]+".is_matched_by(String::from("alphabet: abcdefghijklmnopqrstuvxyz")));
+        assert!("[a-z]*".is_matched_by(String::from("")));
+        assert!("[a-z+]*".is_matched_by(String::from(""))); // Ignore special characters in brackets
 
-        assert!("[ a-z]*".is_not_satisfied_by(String::from("now I can write things")));
-        assert!("[a-z]*".is_not_satisfied_by(String::from("8675309")));
-        assert!("[a-z]+".is_not_satisfied_by(String::from("")));
+        assert!("[ a-z]*".is_not_matched_by(String::from("now I can write things")));
+        assert!("[a-z]*".is_not_matched_by(String::from("8675309")));
+        assert!("[a-z]+".is_not_matched_by(String::from("")));
 
         // Malformed regexes never match
-        assert!("[[]]".is_not_satisfied_by(String::from("")));
-        assert!("[[]a]".is_not_satisfied_by(String::from("abcd")));
-        assert!("[[bc]]".is_not_satisfied_by(String::from("Anything??")));
-        assert!("[+-]zzzz]".is_not_satisfied_by(String::from("Everything!~!~!")));
+        assert!("[[]]".is_not_matched_by(String::from("")));
+        assert!("[[]a]".is_not_matched_by(String::from("abcd")));
+        assert!("[[bc]]".is_not_matched_by(String::from("Anything??")));
+        assert!("[+-]zzzz]".is_not_matched_by(String::from("Everything!~!~!")));
 
-        assert!("[aa]".is_satisfied_by(String::from("a")));
-        assert!("[aa]".is_not_satisfied_by(String::from("")));
+        assert!("[aa]".is_matched_by(String::from("a")));
+        assert!("[aa]".is_not_matched_by(String::from("")));
 
         // We ignore special characters inside...
-        assert!("[a?]".is_not_satisfied_by(String::from("")));
-        assert!("[a?]".is_satisfied_by(String::from("a")));
-        assert!("[a?]".is_satisfied_by(String::from("?")));
+        assert!("[a?]".is_not_matched_by(String::from("")));
+        assert!("[a?]".is_matched_by(String::from("a")));
+        assert!("[a?]".is_matched_by(String::from("?")));
     }
 
     #[test]
     fn inversely_matches_anything_in_brackets() {
         // Basics?
-        assert!("[^]".is_satisfied_by(String::from("")));
-        assert!("[^]".is_not_satisfied_by(String::from("a")));
-        assert!("[^a]".is_not_satisfied_by(String::from("")));
-        assert!("[^a]".is_not_satisfied_by(String::from("a")));
-        assert!("[^a]".is_not_satisfied_by(String::from("aa")));
-        assert!("a[^]".is_not_satisfied_by(String::from("")));
-        assert!("a[^]".is_satisfied_by(String::from("a")));
-        assert!("a[^]".is_not_satisfied_by(String::from("aa")));
-        assert!("[^]a".is_not_satisfied_by(String::from("")));
-        assert!("[^]a".is_satisfied_by(String::from("a")));
-        assert!("[^]a".is_not_satisfied_by(String::from("aa")));
+        assert!("[^]".is_matched_by(String::from("")));
+        assert!("[^]".is_not_matched_by(String::from("a")));
+        assert!("[^a]".is_not_matched_by(String::from("")));
+        assert!("[^a]".is_not_matched_by(String::from("a")));
+        assert!("[^a]".is_not_matched_by(String::from("aa")));
+        assert!("a[^]".is_not_matched_by(String::from("")));
+        assert!("a[^]".is_matched_by(String::from("a")));
+        assert!("a[^]".is_not_matched_by(String::from("aa")));
+        assert!("[^]a".is_not_matched_by(String::from("")));
+        assert!("[^]a".is_matched_by(String::from("a")));
+        assert!("[^]a".is_not_matched_by(String::from("aa")));
 
-        assert!("[^a]*".is_not_satisfied_by(String::from("aa")));
-        assert!("[^a]*".is_satisfied_by(String::from("")));
-        assert!("[^a]*".is_not_satisfied_by(String::from("aaaaaaaaa")));
-        assert!("[^a]*".is_satisfied_by(String::from("bbbbbbbbb")));
+        assert!("[^a]*".is_not_matched_by(String::from("aa")));
+        assert!("[^a]*".is_matched_by(String::from("")));
+        assert!("[^a]*".is_not_matched_by(String::from("aaaaaaaaa")));
+        assert!("[^a]*".is_matched_by(String::from("bbbbbbbbb")));
 
-        assert!("[^ab]*".is_not_satisfied_by(String::from("abaabbbbabaaaab")));
-        assert!("[^ab]*".is_satisfied_by(String::from("")));
-        assert!("[^ab]*".is_not_satisfied_by(String::from("aaaaaaaaaa")));
-        assert!("[^ab]*".is_not_satisfied_by(String::from("bbbbbbbbbb")));
-        assert!("[^ab]*".is_not_satisfied_by(String::from("bbbcbbbbbb")));
-        assert!("[^ab]*".is_satisfied_by(String::from("cdcdcdcdcdcd")));
+        assert!("[^ab]*".is_not_matched_by(String::from("abaabbbbabaaaab")));
+        assert!("[^ab]*".is_matched_by(String::from("")));
+        assert!("[^ab]*".is_not_matched_by(String::from("aaaaaaaaaa")));
+        assert!("[^ab]*".is_not_matched_by(String::from("bbbbbbbbbb")));
+        assert!("[^ab]*".is_not_matched_by(String::from("bbbcbbbbbb")));
+        assert!("[^ab]*".is_matched_by(String::from("cdcdcdcdcdcd")));
 
         // Check ranges
-        assert!("[^0-9]*".is_satisfied_by(String::from("now I can write things")));
-        assert!("[^ a-z]*".is_not_satisfied_by(String::from("now i can write things")));
-        assert!("[^ a-zA-Z]*".is_satisfied_by(String::from("8675309")));
-        assert!("[^ :a-z]+".is_satisfied_by(String::from("ALPHABET")));
-        assert!("[^a-z]*".is_satisfied_by(String::from("")));
-        assert!("[^a-z+]*".is_satisfied_by(String::from(""))); // Ignore special characters in brackets
+        assert!("[^0-9]*".is_matched_by(String::from("now I can write things")));
+        assert!("[^ a-z]*".is_not_matched_by(String::from("now i can write things")));
+        assert!("[^ a-zA-Z]*".is_matched_by(String::from("8675309")));
+        assert!("[^ :a-z]+".is_matched_by(String::from("ALPHABET")));
+        assert!("[^a-z]*".is_matched_by(String::from("")));
+        assert!("[^a-z+]*".is_matched_by(String::from(""))); // Ignore special characters in brackets
 
-        assert!("[^a-z]*".is_satisfied_by(String::from("NOW I CAN WRITE THINGS")));
-        assert!("[^a-z]*".is_satisfied_by(String::from("8675309")));
-        assert!("[^a-z]+".is_not_satisfied_by(String::from("")));
+        assert!("[^a-z]*".is_matched_by(String::from("NOW I CAN WRITE THINGS")));
+        assert!("[^a-z]*".is_matched_by(String::from("8675309")));
+        assert!("[^a-z]+".is_not_matched_by(String::from("")));
 
         // Malformed regexes never match
-        assert!("[^[^]]".is_not_satisfied_by(String::from("")));
-        assert!("[^[^]a]".is_not_satisfied_by(String::from("abcd")));
-        assert!("[^[^bc]]".is_not_satisfied_by(String::from("Anything??")));
-        assert!("[^+-]zzzz]".is_not_satisfied_by(String::from("Everything!~!~!")));
+        assert!("[^[^]]".is_not_matched_by(String::from("")));
+        assert!("[^[^]a]".is_not_matched_by(String::from("abcd")));
+        assert!("[^[^bc]]".is_not_matched_by(String::from("Anything??")));
+        assert!("[^+-]zzzz]".is_not_matched_by(String::from("Everything!~!~!")));
 
-        assert!("[^aa]".is_not_satisfied_by(String::from("a")));
-        assert!("[^aa]".is_not_satisfied_by(String::from("")));
-        assert!("[^aa]".is_satisfied_by(String::from("b")));
-        assert!("[^aa]".is_satisfied_by(String::from("~")));
+        assert!("[^aa]".is_not_matched_by(String::from("a")));
+        assert!("[^aa]".is_not_matched_by(String::from("")));
+        assert!("[^aa]".is_matched_by(String::from("b")));
+        assert!("[^aa]".is_matched_by(String::from("~")));
 
         // We ignore special characters inside...
-        assert!("[^a?]".is_not_satisfied_by(String::from("")));
-        assert!("[^a?]".is_satisfied_by(String::from("c")));
-        assert!("[^a?]".is_not_satisfied_by(String::from("a")));
-        assert!("[^a?]".is_not_satisfied_by(String::from("?")));
+        assert!("[^a?]".is_not_matched_by(String::from("")));
+        assert!("[^a?]".is_matched_by(String::from("c")));
+        assert!("[^a?]".is_not_matched_by(String::from("a")));
+        assert!("[^a?]".is_not_matched_by(String::from("?")));
     }
 
     #[test]
     fn mildly_complex_queries() {
-        assert!("(1[-.]?)?".is_satisfied_by("".to_string()));
-        assert!("(1[-.]?)?".is_satisfied_by("1".to_string()));
-        assert!("(1[-.]?)?".is_satisfied_by("1-".to_string()));
-        assert!("(1[-.]?)?".is_satisfied_by("1.".to_string()));
-        assert!("(1[-.]?)?".is_not_satisfied_by("11".to_string()));
+        assert!("(1[-.]?)?".is_matched_by("".to_string()));
+        assert!("(1[-.]?)?".is_matched_by("1".to_string()));
+        assert!("(1[-.]?)?".is_matched_by("1-".to_string()));
+        assert!("(1[-.]?)?".is_matched_by("1.".to_string()));
+        assert!("(1[-.]?)?".is_not_matched_by("11".to_string()));
     }
 }
