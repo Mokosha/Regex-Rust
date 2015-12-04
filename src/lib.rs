@@ -28,7 +28,6 @@ fn it_can_recognize_phone_numbers() {
 }
 
 #[test]
-#[ignore]
 fn it_handles_exponential_time() {
     use regex::IsRegex;
     assert!("a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*"

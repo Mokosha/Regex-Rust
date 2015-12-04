@@ -119,27 +119,50 @@ fn match_char(c: Character, s: char) -> bool {
     }
 }
 
-fn match_expr(e: Expression, _s: Vec<char>) -> bool {
-    let mut expr_stack = vec![e];
+fn matches_empty_string(e: Expression) -> bool {
+    match e {
+        Expression::Char(_) => false,
+        Expression::Wildcard => false,
+        Expression::Any(chars) => chars.is_empty(),
+        Expression::None(chars) => chars.is_empty(),
+        Expression::All(exprs) => !(exprs.iter().any(|e| !matches_empty_string(e.clone()))),
+        Expression::NoneOrMore(_) => true,
+        Expression::OneOrMore(expr) => matches_empty_string(*expr),
+        Expression::NoneOrOne(_) => true
+    }
+}
+
+fn match_expr(e: Expression, _s: Vec<char>) -> Option<usize> {
+    let mut expr_stack = vec![e.clone()];
     let mut s = _s.clone();
 
-    loop {
+    if s.is_empty() {
+        if matches_empty_string(e) {
+            return Some(0)
+        } else {
+            return None;
+        }
+    }
+
+    while !(expr_stack.is_empty()) {
 //        println!("{:?}", (expr_stack.clone(), s.clone()));
-//        ::std::thread::sleep(::std::time::Duration::new(1, 0));
 
         let e = expr_stack.pop().unwrap();
+
+//        println!("Popped: {:?}", e);
+//        ::std::thread::sleep(::std::time::Duration::new(1, 0));
 
         match e {
             Expression::Char(c) => {
                 if s.len() == 0 || !match_char(c, s[0]) {
-                    return false
+                    return None;
                 }
                 s = drop_n(s.clone(), 1);
             },
 
             Expression::Wildcard => {
                 if s.len() == 0 {
-                    return false;
+                    return None;
                 }
                 s = drop_n(s.clone(), 1);
             },
@@ -150,10 +173,10 @@ fn match_expr(e: Expression, _s: Vec<char>) -> bool {
                     // If there are chars to match, then
                     // we have to match at least some character...
                     if s.is_empty() {
-                        return false;
+                        return None;
                     } else {
                         if chars.iter().any(|c| { match_char(*c, s[0]) }) {
-                            return false;
+                            return None;
                         }
                         s = drop_n(s.clone(), 1);
                     }
@@ -163,10 +186,10 @@ fn match_expr(e: Expression, _s: Vec<char>) -> bool {
             Expression::Any(chars) => {
                 if !chars.is_empty() {
                     if s.is_empty() {
-                        return false;
+                        return None;
                     } else {
                         if chars.iter().all(|c| { !match_char(*c, s[0]) }) {
-                            return false;
+                            return None;
                         }
                         s = drop_n(s.clone(), 1);
                     }
@@ -182,45 +205,40 @@ fn match_expr(e: Expression, _s: Vec<char>) -> bool {
             },
 
             Expression::NoneOrMore(expr_box) => {
-                if !(s.is_empty()) {
-                    // More?
-                    let more = {
-                        let mut stack = expr_stack.clone();
-                        stack.push(Expression::NoneOrMore(expr_box.clone()));
-                        stack.push((*expr_box).clone());
-                        stack.reverse();
-                        match_expr(Expression::All(stack), s.clone())
-                    };
-
-                    if more { return true; }
+                if !s.is_empty() {
+                    match match_expr(*(expr_box.clone()), s.clone()) {
+                        Some(num) => {
+                            if num > 0 {
+                                expr_stack.push(Expression::NoneOrMore(expr_box));
+                                s = drop_n(s.clone(), num);
+                            }
+                        },
+                        None => () // Do nothing
+                    }
                 }
             },
 
             Expression::OneOrMore(expr_box) => {
-                let mut stack = expr_stack.clone();
-                stack.push(Expression::NoneOrMore(expr_box.clone()));
-                stack.push((*expr_box).clone());
-                stack.reverse();
-                return match_expr(Expression::All(stack), s.clone());
+                expr_stack.push(Expression::NoneOrMore(expr_box.clone()));
+                expr_stack.push((*expr_box).clone());
             },
 
             Expression::NoneOrOne(expr_box) => {
-                // One?
-                let one = {
-                    let mut stack = expr_stack.clone();
-                    stack.push((*expr_box).clone());
-                    stack.reverse();
-                    match_expr(Expression::All(stack), s.clone())
-                };
-
-                if one { return true; }
+                if !s.is_empty() {
+                    match match_expr(*(expr_box.clone()), s.clone()) {
+                        Some(num) => {
+                            if num > 0 {
+                                s = drop_n(s.clone(), num);
+                            }
+                        },
+                        None => () // Do nothing
+                    }
+                }
             },
         }
-        
-        if expr_stack.is_empty() {
-            return s.is_empty();
-        }
     }
+
+    Some(_s.len() - s.len())
 }
 
 /// A string is a Regular Expression if it can validate other strings
@@ -262,7 +280,7 @@ impl IsRegex for String {
             Ok(ex) => ex
         };
 
-        if match_expr(expr, s.chars().collect()) {
+        if match_expr(expr, s.chars().collect()) == Some(s.len()) {
             None
         } else {
             Some("String does not match regex")
@@ -625,5 +643,13 @@ mod tests {
         assert!("(1[-.]?)?".is_matched_by("1-".to_string()));
         assert!("(1[-.]?)?".is_matched_by("1.".to_string()));
         assert!("(1[-.]?)?".is_not_matched_by("11".to_string()));
+    }
+
+    #[test]
+    fn some_group_tests() {
+        assert!("()".is_matched_by("".to_string()));
+        assert!("()()".is_matched_by("".to_string()));
+        assert!("()()?".is_matched_by("".to_string()));
+        assert!("()*()?".is_matched_by("".to_string()));
     }
 }
