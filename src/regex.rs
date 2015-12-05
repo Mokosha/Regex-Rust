@@ -643,6 +643,8 @@ mod tests {
         assert!("(1[-.]?)?".is_matched_by("1-".to_string()));
         assert!("(1[-.]?)?".is_matched_by("1.".to_string()));
         assert!("(1[-.]?)?".is_not_matched_by("11".to_string()));
+
+        assert!("a*a+".is_matched_by("a"));
     }
 
     #[test]
