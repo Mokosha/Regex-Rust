@@ -140,7 +140,7 @@ impl State {
 
     // Only performs the offset if the states are greater
     // than or equal to from
-    fn offset_from(self, off: usize, from: usize) -> State {
+    fn offset_from(self, from: usize, off: usize) -> State {
         match self {
             State::Success => self,
             State::NeedsCharacter(c, id) => {
@@ -180,7 +180,7 @@ impl NFA {
     fn insert(&mut self, at: usize, st: State) {
         self.states.insert(at, st);
         self.states = self.states.iter().enumerate().map(|(i, s)| {
-            s.clone().offset_from(1, if i == at { at } else { at - 1 })
+            s.clone().offset_from(if i == at { at } else { at - 1 }, 1)
         }).collect();
     }
 
