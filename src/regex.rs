@@ -105,209 +105,10 @@
 use expr::Expression;
 use expr::Character;
 use tokenizer::parse_string;
-
-#[derive(Debug, PartialEq, Clone)]
-enum ExpectedChar {
-    Specific(char),
-    Wildcard,
-    Any(Vec<Character>),
-    None(Vec<Character>)
-}
-
-#[derive(Debug, PartialEq, Clone)]
-enum State {
-    Success,
-
-    // In order to transition to the state indexed, it needs a character
-    NeedsCharacter(ExpectedChar, usize),
-
-    // Branches into two states
-    Branch(usize, usize)
-}
-
-impl State {
-    fn branch(id1: usize, id2: usize) -> State {
-        State::Branch(id1, id2)
-    }
-
-    fn offset(self, off: usize) -> State {
-        match self {
-            State::Success => self,
-            State::NeedsCharacter(c, id) => State::NeedsCharacter(c, id + off),
-            State::Branch(id1, id2) => State::Branch(id1 + off, id2 + off)
-        }
-    }
-
-    // Only performs the offset if the states are greater
-    // than or equal to from
-    fn offset_from(self, from: usize, off: usize) -> State {
-        match self {
-            State::Success => self,
-            State::NeedsCharacter(c, id) => {
-                if id >= from {
-                    State::NeedsCharacter(c, id + off)
-                } else {
-                    State::NeedsCharacter(c, id)
-                }
-            },
-
-            State::Branch(id1, id2) => {
-                let n1 = if id1 >= from { id1 + off } else { id1 };
-                let n2 = if id2 >= from { id2 + off } else { id2 };
-                State::Branch(n1, n2)
-            },
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-struct NFA {
-    states: Vec<State>,
-}
-
-impl NFA {
-    fn new() -> NFA { NFA { states: vec![State::Success] } }
-
-    fn with_char(c: ExpectedChar) -> NFA {
-        NFA { states: vec![ State::Success, State::NeedsCharacter(c, 0) ] }
-    }
-
-    fn char_st(c: char) -> NFA { NFA::with_char(ExpectedChar::Specific(c)) }
-    fn wildcard() -> NFA { NFA::with_char(ExpectedChar::Wildcard) }
-    fn any(chars: Vec<Character>) -> NFA { NFA::with_char(ExpectedChar::Any(chars)) }
-    fn none(chars: Vec<Character>) -> NFA { NFA::with_char(ExpectedChar::None(chars)) }
-
-    fn insert(&mut self, at: usize, st: State) {
-        self.states.insert(at, st);
-        self.states = self.states.iter().enumerate().map(|(i, s)| {
-            s.clone().offset_from(if i == at { at } else { at - 1 }, 1)
-        }).collect();
-    }
-
-    // Places all the exit points of self onto the beginning
-    // of other...
-    fn concat(self, other: NFA) -> NFA {
-        // Invariant: first state should be success state
-        assert_eq!(self.states[0], State::Success);
-        assert_eq!(other.states[0], State::Success);
-
-        // We concatenate the two vectors together, and then
-        // update all references of the second to be += first.len()
-        let off = other.states.len() - 1;
-        assert!(other.states.len() != 0);
-
-        self.states.iter().fold(other, |nfa, state| {
-            let s = state.clone();
-            match s {
-                State::Success => nfa,
-                _ => {
-                    let mut new_nfa = nfa.clone();
-                    new_nfa.states.push(s.offset(off));
-                    new_nfa
-                }
-            }
-        })
-    }
-
-    fn remove_branches(&self, st: Vec<usize>) -> Vec<usize> {
-        let mut check_states = st.clone();
-        let mut checked_states: Vec<usize> = Vec::new();
-        let mut branchless_states: Vec<usize> = Vec::new();
-        loop {
-            let st_idx = {
-                match check_states.pop() {
-                    None => break,
-                    Some(st) => st
-                }
-            };
-
-            match self.states[st_idx].clone() {
-                // We can consider some of these states as "empty"
-                State::NeedsCharacter(ExpectedChar::Any(chars), next) => {
-                    if chars.is_empty() {
-                        if !checked_states.contains(&next) {
-                            check_states.push(next);
-                        }
-                    } else {
-                        branchless_states.push(st_idx);
-                    }
-                },
-
-                State::NeedsCharacter(ExpectedChar::None(chars), next) => {
-                    if chars.is_empty() {
-                        if !checked_states.contains(&next) {
-                            check_states.push(next);
-                        }
-                    } else {
-                        branchless_states.push(st_idx);
-                    }
-                },
-
-                // We don't check for success here, but on the next loop
-                // iteration we should know that we can...
-                State::Branch(id1, id2) => {
-                    if !checked_states.contains(&id1) {
-                        check_states.push(id1);
-                    }
-
-                    if !checked_states.contains(&id2) {
-                        check_states.push(id2);
-                    }
-                },
-                _ => branchless_states.push(st_idx)
-            }
-
-            checked_states.push(st_idx);
-        }
-
-        branchless_states.dedup();
-        branchless_states
-    }
-}
-
-fn build_nfa (expr: Expression) -> NFA {
-    match expr {
-        Expression::Char(c) => NFA::char_st(c),
-        Expression::Wildcard => NFA::wildcard(),
-        Expression::Any(chars) => NFA::any(chars),
-        Expression::None(chars) => NFA::none(chars),
-        Expression::All(exprs) => exprs.iter().fold(NFA::new(), |nfa, e| {
-            nfa.concat(build_nfa(e.clone()))
-        }),
-
-        Expression::NoneOrMore(expr) => {
-            let mut expr_nfa = build_nfa(*expr);
-            let last_state_id = expr_nfa.states.len() - 1;
-
-            // Add the none branch
-            expr_nfa.states.push(State::branch(0, last_state_id));
-
-            // Add the more branch
-            expr_nfa.insert(1, State::branch(0, last_state_id));
-
-            expr_nfa
-        },
-
-        Expression::OneOrMore(expr) => {
-            let mut expr_nfa = build_nfa(*expr);
-            let last_state_id = expr_nfa.states.len() - 1;
-
-            // Add the more branch
-            expr_nfa.insert(1, State::branch(0, last_state_id));
-            expr_nfa
-        },
-
-        Expression::NoneOrOne(expr) => {
-            let mut expr_nfa = build_nfa(*expr);
-            let last_state_id = expr_nfa.states.len() - 1;
-
-            // Add the none branch
-            expr_nfa.states.push(State::branch(0, last_state_id));
-
-            expr_nfa
-        }
-    }
-}
+use nfa::ExpectedChar;
+use nfa::State;
+use nfa::NFA;
+use nfa::build_nfa;
 
 fn match_char(c: Character, s: char) -> bool {
     match c {
@@ -337,7 +138,7 @@ fn matches_expected(e: ExpectedChar, c: char) -> bool {
 
 fn match_nfa (nfa: NFA, s: Vec<char>) -> bool {
     // Our entry point is the last state on the nfa.
-    let mut check_states: Vec<usize> = vec![nfa.states.len() - 1];
+    let mut check_states: Vec<usize> = vec![nfa.num_states() - 1];
 
     // Loop until we run out of characters
     for ch in s {
@@ -345,7 +146,8 @@ fn match_nfa (nfa: NFA, s: Vec<char>) -> bool {
         // If we're out of states, or we only have the success state, then we fail
         // since there is no character-based transition out of it.
         if check_states.is_empty() ||
-            (check_states.len() == 1 && nfa.states[check_states[0]] == State::Success) {
+            (check_states.len() == 1 &&
+             *(nfa.state_at(check_states[0])) == State::Success) {
             return false;
         }
 
@@ -358,7 +160,7 @@ fn match_nfa (nfa: NFA, s: Vec<char>) -> bool {
 
         for st_idx in check_states.clone() {
 
-            match nfa.states[st_idx].clone() {
+            match nfa.state_at(st_idx).clone() {
                 // We don't check for success here, but on the next loop
                 // iteration we should know that we can...
                 State::NeedsCharacter(c, next) => {
@@ -381,7 +183,7 @@ fn match_nfa (nfa: NFA, s: Vec<char>) -> bool {
     // If we're at the end of the line with our indices, then
     // we need to see if we've reached the success state during the last
     // iteration through our states...
-    check_states.iter().any(|&i| { nfa.states[i] == State::Success } )
+    check_states.iter().any(|&i| { *(nfa.state_at(i)) == State::Success } )
 }
 
 /// A string is a Regular Expression if it can validate other strings

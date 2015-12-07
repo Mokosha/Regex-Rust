@@ -1,5 +1,6 @@
 mod expr;
 mod tokenizer;
+mod nfa;
 pub mod regex;
 
 #[test]
