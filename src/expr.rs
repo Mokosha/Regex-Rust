@@ -3,15 +3,15 @@ use std::boxed::Box;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Character {
-    Char(char),
-    Numeral,
-    Lowercase,
-    Uppercase
+    Specific(char),
+    Numeral(usize, usize),
+    Lowercase(char, char),
+    Uppercase(char, char)
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
-    Char(Character),
+    Char(char),
     Wildcard,
 
     // Any of the expressions will match
@@ -31,25 +31,25 @@ pub enum Expression {
 
 impl Expression {
     pub fn with_char(c: char) -> Expression {
-        Expression::Char(Character::Char(c))
+        Expression::Char(c)
     }
 }
 
 fn token_to_char(t: &Token) -> Character {
     match *t {
-        Token::Char(c) => Character::Char(c),
-        Token::Wildcard => Character::Char('.'),
-        Token::NoneOrMore => Character::Char('*'),
-        Token::OneOrMore => Character::Char('+'),
-        Token::NoneOrOne => Character::Char('?'),
-        Token::NumeralRange => Character::Numeral,
-        Token::LowercaseRange => Character::Lowercase,
-        Token::UppercaseRange => Character::Uppercase,
-        Token::OpenBracket => Character::Char('['),
-        Token::ClosedBracket => Character::Char(']'),
-        Token::BracketInversion => Character::Char('^'),
-        Token::OpenParen => Character::Char('('),
-        Token::ClosedParen => Character::Char(')')
+        Token::Char(c) => Character::Specific(c),
+        Token::Wildcard => Character::Specific('.'),
+        Token::NoneOrMore => Character::Specific('*'),
+        Token::OneOrMore => Character::Specific('+'),
+        Token::NoneOrOne => Character::Specific('?'),
+        Token::NumeralRange => Character::Numeral(0, 9),
+        Token::LowercaseRange => Character::Lowercase('a', 'z'),
+        Token::UppercaseRange => Character::Uppercase('A', 'Z'),
+        Token::OpenBracket => Character::Specific('['),
+        Token::ClosedBracket => Character::Specific(']'),
+        Token::BracketInversion => Character::Specific('^'),
+        Token::OpenParen => Character::Specific('('),
+        Token::ClosedParen => Character::Specific(')')
     }
 }
 
@@ -388,49 +388,49 @@ mod tests {
     fn it_allows_bracket_exprs() {
         assert_eq!(Expression::new(unsafe_parse("[0-9]")).unwrap(),
                    Expression::All(vec![
-                       Expression::Any(vec![Character::Numeral])]));
+                       Expression::Any(vec![Character::Numeral(0, 9)])]));
 
         assert_eq!(Expression::new(unsafe_parse("[0-9a-z]")).unwrap(),
                    Expression::All(vec![
                        Expression::Any(vec![
-                           Character::Numeral,
-                           Character::Lowercase])]));
+                           Character::Numeral(0, 9),
+                           Character::Lowercase('a', 'z')])]));
 
         assert_eq!(Expression::new(unsafe_parse("[^abc]")).unwrap(),
                    Expression::All(vec![
                        Expression::None(vec![
-                           Character::Char('a'),
-                           Character::Char('b'),
-                           Character::Char('c')])]));
+                           Character::Specific('a'),
+                           Character::Specific('b'),
+                           Character::Specific('c')])]));
 
         // Don't worry about duplicates in brackets, they are
         // redundant and serve no functional difference.
         assert_eq!(Expression::new(unsafe_parse("[lol]")).unwrap(),
                    Expression::All(vec![
                        Expression::Any(vec![
-                           Character::Char('l'),
-                           Character::Char('o'),
-                           Character::Char('l')])]));
+                           Character::Specific('l'),
+                           Character::Specific('o'),
+                           Character::Specific('l')])]));
 
         // Multipliers in brackets make no sense, but they aren't
         // ambiguous so we can just ignore them.
         assert_eq!(Expression::new(unsafe_parse("[l+ol*]")).unwrap(),
                    Expression::All(vec![
                        Expression::Any(vec![
-                           Character::Char('l'),
-                           Character::Char('+'),
-                           Character::Char('o'),
-                           Character::Char('l'),
-                           Character::Char('*')])]));
+                           Character::Specific('l'),
+                           Character::Specific('+'),
+                           Character::Specific('o'),
+                           Character::Specific('l'),
+                           Character::Specific('*')])]));
 
         assert_eq!(Expression::new(unsafe_parse("(.[(0-9)])")).unwrap(),
                    Expression::All(vec![
                        Expression::All(vec![
                            Expression::Wildcard,
                            Expression::Any(vec![
-                               Character::Char('('),
-                               Character::Numeral,
-                               Character::Char(')')])])]));
+                               Character::Specific('('),
+                               Character::Numeral(0, 9),
+                               Character::Specific(')')])])]));
     }
 
     #[test]
@@ -457,40 +457,40 @@ mod tests {
                    Expression::All(vec![
                        Expression::with_char('l'),
                        Expression::Any(vec![
-                           Character::Char('('),
-                           Character::Char('o'),
-                           Character::Char(')')]),
+                           Character::Specific('('),
+                           Character::Specific('o'),
+                           Character::Specific(')')]),
                        Expression::with_char('l')]));
 
         assert_eq!(Expression::new(unsafe_parse("l[0-9(o)]l")).unwrap(),
                    Expression::All(vec![
                        Expression::with_char('l'),
                        Expression::Any(vec![
-                           Character::Numeral,
-                           Character::Char('('),
-                           Character::Char('o'),
-                           Character::Char(')')]),
+                           Character::Numeral(0, 9),
+                           Character::Specific('('),
+                           Character::Specific('o'),
+                           Character::Specific(')')]),
                        Expression::with_char('l')]));
 
         assert_eq!(Expression::new(unsafe_parse("l[^0-9(o)]l")).unwrap(),
                    Expression::All(vec![
                        Expression::with_char('l'),
                        Expression::None(vec![
-                           Character::Numeral,
-                           Character::Char('('),
-                           Character::Char('o'),
-                           Character::Char(')')]),
+                           Character::Numeral(0, 9),
+                           Character::Specific('('),
+                           Character::Specific('o'),
+                           Character::Specific(')')]),
                        Expression::with_char('l')]));
 
         assert_eq!(Expression::new(unsafe_parse("l[0-9^(o)](.)")).unwrap(),
                    Expression::All(vec![
                        Expression::with_char('l'),
                        Expression::Any(vec![
-                           Character::Numeral,
-                           Character::Char('^'),
-                           Character::Char('('),
-                           Character::Char('o'),
-                           Character::Char(')')]),
+                           Character::Numeral(0, 9),
+                           Character::Specific('^'),
+                           Character::Specific('('),
+                           Character::Specific('o'),
+                           Character::Specific(')')]),
                        Expression::All(vec![
                            Expression::Wildcard])]));
     }

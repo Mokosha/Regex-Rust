@@ -106,139 +106,289 @@ use expr::Expression;
 use expr::Character;
 use tokenizer::parse_string;
 
-fn drop_n<T: Clone>(v: Vec<T>, n: usize) -> Vec<T> {
-    v.iter().skip(n).map(|x| x.clone()).collect()
+#[derive(Debug, PartialEq, Clone)]
+enum ExpectedChar {
+    Specific(char),
+    Wildcard,
+    Any(Vec<Character>),
+    None(Vec<Character>)
+}
+
+#[derive(Debug, PartialEq, Clone)]
+enum State {
+    Success,
+
+    // In order to transition to the state indexed, it needs a character
+    NeedsCharacter(ExpectedChar, usize),
+
+    // Branches into two states
+    Branch(usize, usize)
+}
+
+impl State {
+    fn branch(id1: usize, id2: usize) -> State {
+        State::Branch(id1, id2)
+    }
+
+    fn offset(self, off: usize) -> State {
+        match self {
+            State::Success => self,
+            State::NeedsCharacter(c, id) => State::NeedsCharacter(c, id + off),
+            State::Branch(id1, id2) => State::Branch(id1 + off, id2 + off)
+        }
+    }
+
+    // Only performs the offset if the states are greater
+    // than or equal to from
+    fn offset_from(self, off: usize, from: usize) -> State {
+        match self {
+            State::Success => self,
+            State::NeedsCharacter(c, id) => {
+                if id >= from {
+                    State::NeedsCharacter(c, id + off)
+                } else {
+                    State::NeedsCharacter(c, id)
+                }
+            },
+
+            State::Branch(id1, id2) => {
+                let n1 = if id1 >= from { id1 + off } else { id1 };
+                let n2 = if id2 >= from { id2 + off } else { id2 };
+                State::Branch(n1, n2)
+            },
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+struct NFA {
+    states: Vec<State>,
+}
+
+impl NFA {
+    fn new() -> NFA { NFA { states: vec![State::Success] } }
+
+    fn char_st(c: char) -> NFA {
+        let expected = ExpectedChar::Specific(c);
+        NFA { states: vec![ State::Success, State::NeedsCharacter(expected, 0) ] }
+    }
+
+    fn wildcard() -> NFA {
+        let expected = ExpectedChar::Wildcard;
+        NFA { states: vec![ State::Success, State::NeedsCharacter(expected, 0) ] }
+    }
+
+    fn any(chars: Vec<Character>) -> NFA {
+        let expected = ExpectedChar::Any(chars);
+        NFA { states: vec![ State::Success, State::NeedsCharacter(expected, 0) ] }
+    }
+
+    fn none(chars: Vec<Character>) -> NFA {
+        let expected = ExpectedChar::None(chars);
+        NFA { states: vec![ State::Success, State::NeedsCharacter(expected, 0) ] }
+    }
+
+    fn insert(&mut self, at: usize, st: State) {
+        self.states.insert(at, st);
+        self.states = self.states.iter().enumerate().map(|(i, s)| {
+            s.clone().offset_from(1, if i == at { at } else { at - 1 })
+        }).collect();
+    }
+
+    // Places all the exit points of self onto the beginning
+    // of other...
+    fn concat(self, other: NFA) -> NFA {
+        // Invariant: first state should be success state
+        assert_eq!(self.states[0], State::Success);
+        assert_eq!(other.states[0], State::Success);
+
+        // We concatenate the two vectors together, and then
+        // update all references of the second to be += first.len()
+        let off = other.states.len() - 1;
+        assert!(other.states.len() != 0);
+
+        self.states.iter().fold(other, |nfa, state| {
+            let s = state.clone();
+            match s {
+                State::Success => nfa,
+                _ => {
+                    let mut new_nfa = nfa.clone();
+                    new_nfa.states.push(s.offset(off));
+                    new_nfa
+                }
+            }
+        })
+    }
+
+    fn remove_branches(&self, st: Vec<usize>) -> Vec<usize> {
+        let mut check_states = st.clone();
+        let mut checked_states: Vec<usize> = Vec::new();
+        let mut branchless_states: Vec<usize> = Vec::new();
+        loop {
+            let st_idx = {
+                match check_states.pop() {
+                    None => break,
+                    Some(st) => st
+                }
+            };
+
+            match self.states[st_idx].clone() {
+                // We can consider some of these states as "empty"
+                State::NeedsCharacter(ExpectedChar::Any(chars), next) => {
+                    if chars.is_empty() && !checked_states.contains(&next) {
+                        check_states.push(next);
+                    } else {
+                        branchless_states.push(st_idx);
+                    }
+                },
+
+                State::NeedsCharacter(ExpectedChar::None(chars), next) => {
+                    if chars.is_empty() && !checked_states.contains(&next) {
+                        check_states.push(next);
+                    } else {
+                        branchless_states.push(st_idx);
+                    }
+                },
+
+                // We don't check for success here, but on the next loop
+                // iteration we should know that we can...
+                State::Branch(id1, id2) => {
+                    if !checked_states.contains(&id1) {
+                        check_states.push(id1);
+                    }
+
+                    if !checked_states.contains(&id2) {
+                        check_states.push(id2);
+                    }
+                },
+                _ => branchless_states.push(st_idx)
+            }
+
+            checked_states.push(st_idx);
+        }
+
+        branchless_states.dedup();
+        branchless_states
+    }
+}
+
+fn build_nfa (expr: Expression) -> NFA {
+    match expr {
+        Expression::Char(c) => NFA::char_st(c),
+        Expression::Wildcard => NFA::wildcard(),
+        Expression::Any(chars) => NFA::any(chars),
+        Expression::None(chars) => NFA::none(chars),
+        Expression::All(exprs) => exprs.iter().fold(NFA::new(), |nfa, e| {
+            nfa.concat(build_nfa(e.clone()))
+        }),
+
+        Expression::NoneOrMore(expr) => {
+            let mut expr_nfa = build_nfa(*expr);
+            let last_state_id = expr_nfa.states.len() - 1;
+
+            // Add the none branch
+            expr_nfa.states.push(State::branch(0, last_state_id));
+
+            // Add the more branch
+            expr_nfa.insert(1, State::branch(0, last_state_id));
+
+            expr_nfa
+        },
+
+        Expression::OneOrMore(expr) => {
+            let mut expr_nfa = build_nfa(*expr);
+            let last_state_id = expr_nfa.states.len() - 1;
+
+            // Add the more branch
+            expr_nfa.insert(1, State::branch(0, last_state_id));
+            expr_nfa
+        },
+
+        Expression::NoneOrOne(expr) => {
+            let mut expr_nfa = build_nfa(*expr);
+            let last_state_id = expr_nfa.states.len() - 1;
+
+            // Add the none branch
+            expr_nfa.states.push(State::branch(0, last_state_id));
+
+            expr_nfa
+        }
+    }
 }
 
 fn match_char(c: Character, s: char) -> bool {
     match c {
-        Character::Char(c) => s == c,
-        Character::Numeral => "0123456789".contains(s),
-        Character::Lowercase => "abcdefghijklmnopqrstuvwxyz".contains(s),
-        Character::Uppercase => "ABCDEFGHIJKLMNOPQRSTUVWXYZ".contains(s),
+        Character::Specific(c) => s == c,
+        Character::Numeral(from, to) => "0123456789"[from..(to + 1)].contains(s),
+        Character::Lowercase(from, to) => {
+            let fidx = ((from as u8) - ('a' as u8)) as usize;
+            let tidx = ((to as u8) - ('a' as u8)) as usize;
+            "abcdefghijklmnopqrstuvwxyz"[fidx..(tidx + 1)].contains(s)
+        },
+        Character::Uppercase(from, to) => {
+            let fidx = ((from as u8) - ('A' as u8)) as usize;
+            let tidx = ((to as u8) - ('A' as u8)) as usize;
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[fidx..(tidx + 1)].contains(s)
+        }
     }
 }
 
-fn matches_empty_string(e: Expression) -> bool {
+fn matches_expected(e: ExpectedChar, c: char) -> bool {
     match e {
-        Expression::Char(_) => false,
-        Expression::Wildcard => false,
-        Expression::Any(chars) => chars.is_empty(),
-        Expression::None(chars) => chars.is_empty(),
-        Expression::All(exprs) => !(exprs.iter().any(|e| !matches_empty_string(e.clone()))),
-        Expression::NoneOrMore(_) => true,
-        Expression::OneOrMore(expr) => matches_empty_string(*expr),
-        Expression::NoneOrOne(_) => true
+        ExpectedChar::Specific(s) => s == c,
+        ExpectedChar::Wildcard => true,
+        ExpectedChar::Any(chars) => chars.iter().any(|ch| match_char(*ch, c)),
+        ExpectedChar::None(chars) => !matches_expected(ExpectedChar::Any(chars), c)
     }
 }
 
-fn match_expr(e: Expression, _s: Vec<char>) -> Option<usize> {
-    let mut expr_stack = vec![e.clone()];
-    let mut s = _s.clone();
+fn match_nfa (nfa: NFA, s: Vec<char>) -> bool {
+    // Our entry point is the last state on the nfa.
+    let mut check_states: Vec<usize> = vec![nfa.states.len() - 1];
 
-    if s.is_empty() {
-        if matches_empty_string(e) {
-            return Some(0)
-        } else {
-            return None;
+    // Loop until we run out of characters
+    for ch in s {
+
+        // If we're out of states, or we only have the success state, then we fail
+        // since there is no character-based transition out of it.
+        if check_states.is_empty() ||
+            (check_states.len() == 1 && nfa.states[check_states[0]] == State::Success) {
+            return false;
         }
+
+        // Resolve branches.
+        check_states = nfa.remove_branches(check_states);
+
+        // Go through each state and collect all of the states
+        // that we can possibly transition to.
+        let mut next_states = Vec::new();
+
+        for st_idx in check_states.clone() {
+
+            match nfa.states[st_idx].clone() {
+                // We don't check for success here, but on the next loop
+                // iteration we should know that we can...
+                State::NeedsCharacter(c, next) => {
+                    if matches_expected(c, ch) {
+                        next_states.push(next);
+                    }
+                }
+                _ => (),
+            }
+        }
+
+        // De-duplicate states
+        check_states = next_states;
+        check_states.dedup();
     }
 
-    while !(expr_stack.is_empty()) {
-//        println!("{:?}", (expr_stack.clone(), s.clone()));
-
-        let e = expr_stack.pop().unwrap();
-
-//        println!("Popped: {:?}", e);
-//        ::std::thread::sleep(::std::time::Duration::new(1, 0));
-
-        match e {
-            Expression::Char(c) => {
-                if s.len() == 0 || !match_char(c, s[0]) {
-                    return None;
-                }
-                s = drop_n(s.clone(), 1);
-            },
-
-            Expression::Wildcard => {
-                if s.len() == 0 {
-                    return None;
-                }
-                s = drop_n(s.clone(), 1);
-            },
-            
-            Expression::None(chars) => {
-                // If there are no chars to match, then we can ignore this
-                if !chars.is_empty() {
-                    // If there are chars to match, then
-                    // we have to match at least some character...
-                    if s.is_empty() {
-                        return None;
-                    } else {
-                        if chars.iter().any(|c| { match_char(*c, s[0]) }) {
-                            return None;
-                        }
-                        s = drop_n(s.clone(), 1);
-                    }
-                } 
-            },
-
-            Expression::Any(chars) => {
-                if !chars.is_empty() {
-                    if s.is_empty() {
-                        return None;
-                    } else {
-                        if chars.iter().all(|c| { !match_char(*c, s[0]) }) {
-                            return None;
-                        }
-                        s = drop_n(s.clone(), 1);
-                    }
-                }
-            },
-
-            Expression::All(exprs) => {
-                let mut exprs_rev = exprs.clone();
-                exprs_rev.reverse();
-                for expr in exprs_rev {
-                    expr_stack.push(expr.clone());
-                }
-            },
-
-            Expression::NoneOrMore(expr_box) => {
-                if !s.is_empty() {
-                    match match_expr(*(expr_box.clone()), s.clone()) {
-                        Some(num) => {
-                            if num > 0 {
-                                expr_stack.push(Expression::NoneOrMore(expr_box));
-                                s = drop_n(s.clone(), num);
-                            }
-                        },
-                        None => () // Do nothing
-                    }
-                }
-            },
-
-            Expression::OneOrMore(expr_box) => {
-                expr_stack.push(Expression::NoneOrMore(expr_box.clone()));
-                expr_stack.push((*expr_box).clone());
-            },
-
-            Expression::NoneOrOne(expr_box) => {
-                if !s.is_empty() {
-                    match match_expr(*(expr_box.clone()), s.clone()) {
-                        Some(num) => {
-                            if num > 0 {
-                                s = drop_n(s.clone(), num);
-                            }
-                        },
-                        None => () // Do nothing
-                    }
-                }
-            },
-        }
-    }
-
-    Some(_s.len() - s.len())
+    // One last branch resolution
+    check_states = nfa.remove_branches(check_states);
+    
+    // If we're at the end of the line with our indices, then
+    // we need to see if we've reached the success state during the last
+    // iteration through our states...
+    check_states.iter().any(|&i| { nfa.states[i] == State::Success } )
 }
 
 /// A string is a Regular Expression if it can validate other strings
@@ -280,7 +430,7 @@ impl IsRegex for String {
             Ok(ex) => ex
         };
 
-        if match_expr(expr, s.chars().collect()) == Some(s.len()) {
+        if match_nfa(build_nfa(expr), s.chars().collect()) {
             None
         } else {
             Some("String does not match regex")
@@ -645,6 +795,9 @@ mod tests {
         assert!("(1[-.]?)?".is_not_matched_by("11".to_string()));
 
         assert!("a*a+".is_matched_by("a"));
+        assert!("a?a".is_matched_by("a"));
+        assert!("a?a".is_matched_by("aa"));
+        assert!("a?a".is_not_matched_by("aaa"));
     }
 
     #[test]
