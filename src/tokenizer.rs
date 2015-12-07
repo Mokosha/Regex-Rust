@@ -12,9 +12,6 @@ pub enum Token {
     NoneOrMore,
     OneOrMore,
     NoneOrOne,
-    NumeralRange,
-    LowercaseRange,
-    UppercaseRange,
     OpenBracket,
     ClosedBracket,
     BracketInversion,
@@ -47,38 +44,6 @@ pub fn parse_string(s: String) -> Result<Vec<Token>, &'static str> {
             ']' => Token::ClosedBracket,
             '(' => Token::OpenParen,
             ')' => Token::ClosedParen,
-            '0' => {
-                let next_chars: Vec<char> = iter.clone().take(2).collect();
-                if next_chars == vec!['-', '9'] {
-                    iter.next();
-                    iter.next();
-                    Token::NumeralRange
-                } else {
-                    Token::Char('0')
-                }
-            }
-
-            'a' => {
-                let next_chars: Vec<char> = iter.clone().take(2).collect();
-                if next_chars == vec!['-', 'z'] {
-                    iter.next();
-                    iter.next();
-                    Token::LowercaseRange
-                } else {
-                    Token::Char('a')
-                }
-            }
-
-            'A' => {
-                let next_chars: Vec<char> = iter.clone().take(2).collect();
-                if next_chars == vec!['-', 'Z'] {
-                    iter.next();
-                    iter.next();
-                    Token::UppercaseRange
-                } else {
-                    Token::Char('A')
-                }
-            }
 
             c => {
                 tokens.last().map_or_else(|| Token::Char(c), |last_token| {
@@ -257,12 +222,16 @@ mod tests {
                            Token::Char('0'),
                            Token::Char('-'),
                            Token::Char('2'),
-                           Token::NumeralRange]));
+                           Token::Char('0'),
+                           Token::Char('-'),
+                           Token::Char('9')]));
                                    
         assert_eq!(parse("9-0-9"),
                    Ok(vec![Token::Char('9'),
                            Token::Char('-'),
-                           Token::NumeralRange]));
+                           Token::Char('0'),
+                           Token::Char('-'),
+                           Token::Char('9')]));
     }
 
     #[test]
@@ -272,17 +241,27 @@ mod tests {
                            Token::Char('z')]));
 
         assert_eq!(parse("0-9a-z"),
-                   Ok(vec![Token::NumeralRange,
-                           Token::LowercaseRange]));
+                   Ok(vec![Token::Char('0'),
+                           Token::Char('-'),
+                           Token::Char('9'),
+                           Token::Char('a'),
+                           Token::Char('-'),
+                           Token::Char('z')]));
 
         assert_eq!(parse("a-z0-9"),
-                   Ok(vec![Token::LowercaseRange,
-                           Token::NumeralRange]));
+                   Ok(vec![Token::Char('a'),
+                           Token::Char('-'),
+                           Token::Char('z'),
+                           Token::Char('0'),
+                           Token::Char('-'),
+                           Token::Char('9')]));
 
         assert_eq!(parse("z-a-z"),
                    Ok(vec![Token::Char('z'),
                            Token::Char('-'),
-                           Token::LowercaseRange]));
+                           Token::Char('a'),
+                           Token::Char('-'),
+                           Token::Char('z')]));
     }
 
     #[test]
@@ -292,15 +271,23 @@ mod tests {
                            Token::Char('Z')]));
 
         assert_eq!(parse("0-9a-Z"),
-                   Ok(vec![Token::NumeralRange,
+                   Ok(vec![Token::Char('0'),
+                           Token::Char('-'),
+                           Token::Char('9'),
                            Token::Char('a'),
                            Token::Char('-'),
                            Token::Char('Z')]));
 
         assert_eq!(parse("A-Za-z0-9"),
-                   Ok(vec![Token::UppercaseRange,
-                           Token::LowercaseRange,
-                           Token::NumeralRange]));
+                   Ok(vec![Token::Char('A'),
+                           Token::Char('-'),
+                           Token::Char('Z'),
+                           Token::Char('a'),
+                           Token::Char('-'),
+                           Token::Char('z'),
+                           Token::Char('0'),
+                           Token::Char('-'),
+                           Token::Char('9')]));
 
         assert_eq!(parse("z-A\\-Z"),
                    Ok(vec![Token::Char('z'),
@@ -312,7 +299,9 @@ mod tests {
         assert_eq!(parse("z-A-Z"),
                    Ok(vec![Token::Char('z'),
                            Token::Char('-'),
-                           Token::UppercaseRange]));
+                           Token::Char('A'),
+                           Token::Char('-'),
+                           Token::Char('Z')]));
     }
 
     #[test]
@@ -330,7 +319,9 @@ mod tests {
 
         assert_eq!(parse("[0-9]"),
                    Ok(vec![Token::OpenBracket,
-                           Token::NumeralRange,
+                           Token::Char('0'),
+                           Token::Char('-'),
+                           Token::Char('9'),
                            Token::ClosedBracket]));
     }
 
@@ -355,7 +346,9 @@ mod tests {
         assert_eq!(parse("[^0-9]"),
                    Ok(vec![Token::OpenBracket,
                            Token::BracketInversion,
-                           Token::NumeralRange,
+                           Token::Char('0'),
+                           Token::Char('-'),
+                           Token::Char('9'),
                            Token::ClosedBracket]));
 
         assert_eq!(parse("[0^-9]"),
@@ -368,7 +361,9 @@ mod tests {
 
         assert_eq!(parse("[0-9^]"),
                    Ok(vec![Token::OpenBracket,
-                           Token::NumeralRange,
+                           Token::Char('0'),
+                           Token::Char('-'),
+                           Token::Char('9'),
                            Token::Char('^'),
                            Token::ClosedBracket]));
 
@@ -402,7 +397,9 @@ mod tests {
 
         assert_eq!(parse("(0-9)"),
                    Ok(vec!(Token::OpenParen,
-                           Token::NumeralRange,
+                           Token::Char('0'),
+                           Token::Char('-'),
+                           Token::Char('9'),
                            Token::ClosedParen)));
     }
 }

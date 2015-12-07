@@ -42,15 +42,92 @@ fn token_to_char(t: &Token) -> Character {
         Token::NoneOrMore => Character::Specific('*'),
         Token::OneOrMore => Character::Specific('+'),
         Token::NoneOrOne => Character::Specific('?'),
-        Token::NumeralRange => Character::Numeral(0, 9),
-        Token::LowercaseRange => Character::Lowercase('a', 'z'),
-        Token::UppercaseRange => Character::Uppercase('A', 'Z'),
         Token::OpenBracket => Character::Specific('['),
         Token::ClosedBracket => Character::Specific(']'),
         Token::BracketInversion => Character::Specific('^'),
         Token::OpenParen => Character::Specific('('),
         Token::ClosedParen => Character::Specific(')')
     }
+}
+
+fn range_from(start: char, end: char) -> Option<Character> {
+    // Check for lowercase alphabetic range
+    let low_start_off = ((start as u8) as i32) - (('a' as u8) as i32);
+    let low_end_off = ((end as u8) as i32) - (('a' as u8) as i32);
+
+    let up_start_off = ((start as u8) as i32) - (('A' as u8) as i32);
+    let up_end_off = ((end as u8) as i32) - (('A' as u8) as i32);
+
+    let num_start_off = ((start as u8) as i32) - (('0' as u8) as i32);
+    let num_end_off = ((end as u8) as i32) - (('0' as u8) as i32);
+
+    if low_start_off >= 0 && low_start_off <= low_end_off && low_end_off < 26 {
+        Some(Character::Lowercase(start, end))
+    } else if up_start_off >= 0 && up_start_off <= up_end_off && up_end_off < 26 {
+        Some(Character::Uppercase(start, end))
+    } else if num_start_off >= 0 && num_start_off <= num_end_off && num_end_off < 10 {
+        Some(Character::Numeral(num_start_off as usize, num_end_off as usize))
+    } else {
+        None
+    }
+}
+
+fn characters_from(tokens: Vec<Token>) -> Vec<Character> {
+    let mut token_stack = tokens.clone();
+    let mut chars = Vec::new();
+    loop {
+        let t = match token_stack.pop() {
+            None => break,
+            Some(t) => t
+        };
+
+        // Check for a range...
+        if t == Token::Char('-') {
+            let end = match chars.pop() {
+                Some(Character::Specific(c)) => c,
+                None => {
+                    chars.push(Character::Specific('-'));
+                    continue
+                },
+                Some(x) => {
+                    chars.push(x);
+                    chars.push(Character::Specific('-'));
+                    continue
+                }
+            };
+
+            let start = match token_stack.pop() {
+                None => {
+                    chars.push(Character::Specific(end));
+                    chars.push(Character::Specific('-'));
+                    continue
+                }
+                Some(Token::Char(c)) => c,
+                Some(t2) => {
+                    chars.push(Character::Specific(end));
+                    chars.push(Character::Specific('-'));
+                    chars.push(token_to_char(&t2));
+                    continue
+                }
+            };
+
+            match range_from(start, end) {
+                None => {
+                    chars.push(Character::Specific(end));
+                    chars.push(Character::Specific('-'));
+                    chars.push(Character::Specific(start));
+                },
+                Some(c) => chars.push(c)
+            }
+        } else {
+            chars.push(token_to_char(&t));
+        }
+    }
+
+    // !SPEED! Not necessary but I'm too lazy to rewrite my tests
+    chars.reverse();
+
+    chars
 }
 
 fn build_expression(tokens: Vec<Token>) -> Result<Expression, &'static str> {
@@ -109,24 +186,6 @@ fn build_expression(tokens: Vec<Token>) -> Result<Expression, &'static str> {
                 }
             }
 
-            Token::NumeralRange => {
-                exprs.push(Expression::with_char('0'));
-                exprs.push(Expression::with_char('-'));
-                exprs.push(Expression::with_char('9'));
-            },
-
-            Token::LowercaseRange => {
-                exprs.push(Expression::with_char('a'));
-                exprs.push(Expression::with_char('-'));
-                exprs.push(Expression::with_char('z'));
-            },
-
-            Token::UppercaseRange => {
-                exprs.push(Expression::with_char('A'));
-                exprs.push(Expression::with_char('-'));
-                exprs.push(Expression::with_char('Z'));
-            },
-
             Token::OpenBracket => {
                 // Search for a closing bracket -- if none is found,
                 // then our regex is malformed and report it as such
@@ -144,10 +203,10 @@ fn build_expression(tokens: Vec<Token>) -> Result<Expression, &'static str> {
                     // If they begin with an inversion operator, then we want
                     // none-of the sub expressions, otherwise we want any of them...
                     if !bracketed.is_empty() && bracketed[0] == Token::BracketInversion {
-                        let btns : Vec<_> = bracketed[1..].iter().map(token_to_char).collect();
+                        let btns : Vec<_> = characters_from(bracketed[1..].iter().map(|t| *t).collect());
                         exprs.push(Expression::None(btns))
                     } else {
-                        let btns : Vec<_> = bracketed.iter().map(token_to_char).collect();
+                        let btns : Vec<_> = characters_from(bracketed);
                         exprs.push(Expression::Any(btns))
                     }
                     itr = advanced;

@@ -608,4 +608,23 @@ mod tests {
         assert!("()()?".is_matched_by("".to_string()));
         assert!("()*()?".is_matched_by("".to_string()));
     }
+
+    #[test]
+    fn interesting_ranges() {
+        assert!("[0-8]".is_not_matched_by("9"));
+        assert!("[0-8]".is_matched_by("8"));
+
+        assert!("[j-k]+".is_matched_by("jkjkjkjkjkjkjkjk"));
+        assert!("[j-k]+".is_not_matched_by("jk-jk-jk-jk-jk-jk-jk-jk"));
+        assert!("[k-j]+".is_matched_by("jk-jk-jk-jk-jk-jk-jk-jk"));
+
+        assert!("[0-2]+".is_matched_by("0120120120120120120120120"));
+        assert!("[0-2]+".is_not_matched_by("01-20-12-01-20-12-01-20-12-01-20-12-0"));
+        assert!("[2-0]+".is_matched_by("20-20-20-20-20-20-20-20"));
+
+        assert!("[A-C][d-f][G-I]".is_matched_by("BeH"));
+        assert!("[A-Cd-fG-I]".is_matched_by("B"));
+        assert!("[A-Cd-fG-I]".is_matched_by("e"));
+        assert!("[A-Cd-fG-I]".is_matched_by("H"));
+    }
 }
