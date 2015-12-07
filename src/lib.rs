@@ -32,4 +32,14 @@ fn it_handles_exponential_time() {
     use regex::IsRegex;
     assert!("a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*"
             .is_not_matched_by("aaaaaaaaaaaaaaaaaaaaaaaab"));
+
+    for i in 0..50 {
+        let mut regex = ::std::iter::repeat("a?").take(i).collect::<String>();
+        for _ in 0..i {
+            regex.push('a');
+        }
+
+        let s = ::std::iter::repeat("a").take(i).collect::<String>();
+        assert!(regex.is_matched_by(s));
+    }
 }
