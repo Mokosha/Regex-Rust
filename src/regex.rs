@@ -168,25 +168,14 @@ struct NFA {
 impl NFA {
     fn new() -> NFA { NFA { states: vec![State::Success] } }
 
-    fn char_st(c: char) -> NFA {
-        let expected = ExpectedChar::Specific(c);
-        NFA { states: vec![ State::Success, State::NeedsCharacter(expected, 0) ] }
+    fn with_char(c: ExpectedChar) -> NFA {
+        NFA { states: vec![ State::Success, State::NeedsCharacter(c, 0) ] }
     }
 
-    fn wildcard() -> NFA {
-        let expected = ExpectedChar::Wildcard;
-        NFA { states: vec![ State::Success, State::NeedsCharacter(expected, 0) ] }
-    }
-
-    fn any(chars: Vec<Character>) -> NFA {
-        let expected = ExpectedChar::Any(chars);
-        NFA { states: vec![ State::Success, State::NeedsCharacter(expected, 0) ] }
-    }
-
-    fn none(chars: Vec<Character>) -> NFA {
-        let expected = ExpectedChar::None(chars);
-        NFA { states: vec![ State::Success, State::NeedsCharacter(expected, 0) ] }
-    }
+    fn char_st(c: char) -> NFA { NFA::with_char(ExpectedChar::Specific(c)) }
+    fn wildcard() -> NFA { NFA::with_char(ExpectedChar::Wildcard) }
+    fn any(chars: Vec<Character>) -> NFA { NFA::with_char(ExpectedChar::Any(chars)) }
+    fn none(chars: Vec<Character>) -> NFA { NFA::with_char(ExpectedChar::None(chars)) }
 
     fn insert(&mut self, at: usize, st: State) {
         self.states.insert(at, st);
