@@ -224,16 +224,20 @@ impl NFA {
             match self.states[st_idx].clone() {
                 // We can consider some of these states as "empty"
                 State::NeedsCharacter(ExpectedChar::Any(chars), next) => {
-                    if chars.is_empty() && !checked_states.contains(&next) {
-                        check_states.push(next);
+                    if chars.is_empty() {
+                        if !checked_states.contains(&next) {
+                            check_states.push(next);
+                        }
                     } else {
                         branchless_states.push(st_idx);
                     }
                 },
 
                 State::NeedsCharacter(ExpectedChar::None(chars), next) => {
-                    if chars.is_empty() && !checked_states.contains(&next) {
-                        check_states.push(next);
+                    if chars.is_empty() {
+                        if !checked_states.contains(&next) {
+                            check_states.push(next);
+                        }
                     } else {
                         branchless_states.push(st_idx);
                     }
@@ -787,6 +791,12 @@ mod tests {
         assert!("a?a".is_matched_by("a"));
         assert!("a?a".is_matched_by("aa"));
         assert!("a?a".is_not_matched_by("aaa"));
+
+        assert!("[][]".is_matched_by(""));
+        assert!("[]*a[]".is_matched_by("a"));
+        assert!("([]a)*[]".is_matched_by(""));
+        assert!("([]a)*[]".is_matched_by("a"));
+        assert!("([]a)*[]".is_matched_by("aa"));
     }
 
     #[test]
