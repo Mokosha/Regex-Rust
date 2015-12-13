@@ -43,4 +43,11 @@ fn it_handles_exponential_time() {
         let s = ::std::iter::repeat("a").take(i).collect::<String>();
         assert!(regex.is_matched_by(s));
     }
+
+    assert!("a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*"
+            .is_matched_by("aaaaaaaaaaaaaaaaaaaaaaaa"));
+    assert!("((((((((((((((((((((((((a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*"
+            .is_not_matched_by("aaaaaaaaaaaaaaaaaaaaaaaab"));
+    assert!("((((((((((((((((((((((((a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*a)*"
+            .is_matched_by("aaaaaaaaaaaaaaaaaaaaaaaa"));
 }
