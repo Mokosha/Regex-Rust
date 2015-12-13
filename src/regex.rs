@@ -673,5 +673,10 @@ mod tests {
         assert!("|b|c|d|e|f".is_matched_by("d"));
         assert!("|b|c|d|e|f".is_matched_by("e"));
         assert!("|b|c|d|e|f".is_matched_by("f"));
+
+        assert!("(ab)c|[def](gh)".is_matched_by("abdgh"));
+        assert!("(ab)c|[def](gh)".is_matched_by("abcgh"));
+        assert!("(ab)c|[def](gh)".is_matched_by("abfgh"));
+        assert!("(ab)c|[def](gh)".is_not_matched_by("abgh"));
     }
 }
