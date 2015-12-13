@@ -173,6 +173,33 @@ pub fn build_nfa (expr: Expression) -> NFA {
             nfa.concat(build_nfa(e.clone()))
         }),
 
+        Expression::Choice(e1, e2) => {
+            let mut e1_nfa = build_nfa(*e1);
+            let e2_nfa = build_nfa(*e2);
+
+            let n = e1_nfa.states.len();
+            let m = e2_nfa.states.len();
+
+            // Append each state in sequence, which is effectively a concat, but
+            // instead of the success state, we need to place an epsilon transition
+            // to the success state of the e1 nfa.
+            for s in e2_nfa.states {
+                if s == State::Success {
+                    // !HACK! We need an epsilon transition here, but not necessarily
+                    // a branch. A branch where both states end up in the same place
+                    // is effectively a singular epsilon transition.
+                    e1_nfa.states.push(State::branch(0, 0));
+                } else {
+                    // Each of these states has 'n' states in front from the other nfa
+                    e1_nfa.states.push(s.offset(n));
+                }
+            }
+
+            e1_nfa.states.push(State::branch(n - 1, n + m - 1));
+
+            e1_nfa
+        }
+
         Expression::NoneOrMore(expr) => {
             let mut expr_nfa = build_nfa(*expr);
             let last_state_id = expr_nfa.states.len() - 1;

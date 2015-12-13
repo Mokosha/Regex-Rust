@@ -25,6 +25,17 @@
 //! ```
 //!
 //! ---
+//! Choice
+//!
+//! ```
+//!   use regex::regex::SatisfiesRegex;
+//!   use regex::regex::IsRegex;
+//!   assert!("(hey)|(hello) world".is_matched_by("hello world"));
+//!   assert!("(hey)|(hello) world".is_matched_by("hey world"));
+//!   assert!("(hey)|(hello) world".is_not_matched_by("hi world"));
+//! ```
+//!
+//! ---
 //! None or more
 //!
 //! ```
@@ -139,6 +150,8 @@ fn matches_expected(e: ExpectedChar, c: char) -> bool {
 fn match_nfa (nfa: NFA, s: Vec<char>) -> bool {
     // Our entry point is the last state on the nfa.
     let mut check_states: Vec<usize> = vec![nfa.num_states() - 1];
+
+    println!("NFA: {:?}", nfa);
 
     // Loop until we run out of characters
     for ch in s {
@@ -626,5 +639,39 @@ mod tests {
         assert!("[A-Cd-fG-I]".is_matched_by("B"));
         assert!("[A-Cd-fG-I]".is_matched_by("e"));
         assert!("[A-Cd-fG-I]".is_matched_by("H"));
+    }
+
+    #[test]
+    fn handles_choice() {
+        assert!("a|b".is_matched_by("a"));
+        assert!("a|b".is_matched_by("b"));
+        assert!("a|b".is_not_matched_by("c"));
+        assert!("a|b".is_not_matched_by(""));
+        assert!("a|b".is_not_matched_by("ab"));
+
+        assert!("([a-z]|[0-9])*".is_matched_by("a0b1c2d3e4f5g6h7i8j9"));
+
+        assert!("|".is_matched_by(""));
+        assert!("|".is_not_matched_by("a"));
+        assert!("a|".is_matched_by("a"));
+        assert!("a|".is_not_matched_by(""));
+        assert!("|a".is_matched_by("a"));
+        assert!("|a".is_not_matched_by(""));
+
+        assert!("a|b|c|d|e|f".is_not_matched_by(""));
+        assert!("a|b|c|d|e|f".is_not_matched_by("ab"));
+        assert!("a|b|c|d|e|f".is_not_matched_by("af"));
+        assert!("a|b|c|d|e|f".is_matched_by("a"));
+        assert!("a|b|c|d|e|f".is_matched_by("b"));
+        assert!("a|b|c|d|e|f".is_matched_by("c"));
+        assert!("a|b|c|d|e|f".is_matched_by("d"));
+        assert!("a|b|c|d|e|f".is_matched_by("e"));
+        assert!("a|b|c|d|e|f".is_matched_by("f"));
+
+        assert!("|b|c|d|e|f".is_matched_by("b"));
+        assert!("|b|c|d|e|f".is_matched_by("c"));
+        assert!("|b|c|d|e|f".is_matched_by("d"));
+        assert!("|b|c|d|e|f".is_matched_by("e"));
+        assert!("|b|c|d|e|f".is_matched_by("f"));
     }
 }

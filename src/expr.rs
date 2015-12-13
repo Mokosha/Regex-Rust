@@ -14,14 +14,17 @@ pub enum Expression {
     Char(char),
     Wildcard,
 
-    // Any of the expressions will match
+    // Any of the characters will match
     Any(Vec<Character>),
 
-    // Any of the expressions will cause it to fail
+    // Any of the characters will cause it to fail
     None(Vec<Character>),
 
     // All of the expressions must match in order
     All(Vec<Expression>),
+
+    // Either of the two expressions can match
+    Choice(Box<Expression>, Box<Expression>),
 
     // Modifiers:
     NoneOrMore(Box<Expression>),
@@ -32,6 +35,58 @@ pub enum Expression {
 impl Expression {
     pub fn with_char(c: char) -> Expression {
         Expression::Char(c)
+    }
+
+    pub fn resolve_choice(self) -> Expression {
+        match self {
+            Expression::Char(c) => Expression::Char(c),
+            Expression::Wildcard => Expression::Wildcard,
+            Expression::Any(chars) => Expression::Any(chars),
+            Expression::None(chars) => Expression::None(chars),
+            Expression::All(exprs) => {
+                // Pop the exprs off in sequence... if we hit one
+                // that matches Char('|'), then we can make it
+                // into a choice....
+                let mut incoming = exprs.clone();
+                let mut outgoing = Vec::new();
+                loop {
+                    let e = match incoming.pop() {
+                        None => break,  // we're done
+                        Some(expr) => expr
+                    };
+
+                    if e == Expression::Char('|') {
+                        if !outgoing.is_empty() && !incoming.is_empty() {
+                            // Just ignore this one...
+                            let e1 = outgoing.pop().unwrap();
+                            let e2 = incoming.pop().unwrap();
+                            let new_expr = Expression::Choice(
+                                Box::new(e1), Box::new(e2));
+                            outgoing.push(new_expr);
+                        }
+                    } else {
+                        outgoing.push(e);
+                    }
+                }
+
+                // We've pushed them on backwards
+                outgoing.reverse();
+
+                // Return the outgoing expressions
+                Expression::All(outgoing)
+            }
+            Expression::Choice(e1, e2) => {
+                Expression::Choice(
+                    Box::new((*e1).resolve_choice()),
+                    Box::new((*e2).resolve_choice()))
+            },
+            Expression::NoneOrMore(e) =>
+                Expression::NoneOrMore(Box::new((*e).resolve_choice())),
+            Expression::OneOrMore(e) =>
+                Expression::OneOrMore(Box::new((*e).resolve_choice())),
+            Expression::NoneOrOne(e) =>
+                Expression::NoneOrOne(Box::new((*e).resolve_choice())),
+        }
     }
 }
 
@@ -136,16 +191,10 @@ fn build_expression(tokens: Vec<Token>) -> Result<Expression, &'static str> {
     // We use this as a stack.
     let mut exprs: Vec<Expression> = Vec::new();
 
-    loop {
-
-        // If there are no more tokens, return what we have
-        let next_token: Token = match itr.next() {
-            None => return Ok(Expression::All(exprs)),
-            Some(t) => t.clone()
-        };
+    while let Some(next_token) = itr.next() {
 
         // Deal with the next token...
-        match next_token {
+        match *next_token {
             Token::Wildcard => exprs.push(Expression::Wildcard),
             Token::NoneOrMore => {
                 // Pop the last expression off the stack -- if none
@@ -255,6 +304,8 @@ fn build_expression(tokens: Vec<Token>) -> Result<Expression, &'static str> {
             Token::Char(c) => exprs.push(Expression::with_char(c)),
         }
     }
+
+    Ok(Expression::All(exprs).resolve_choice())
 }
 
 impl Expression {
