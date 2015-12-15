@@ -151,7 +151,7 @@ fn match_nfa (nfa: NFA, s: Vec<char>) -> bool {
     // Our entry point is the last state on the nfa.
     let mut check_states: Vec<usize> = vec![nfa.num_states() - 1];
 
-    println!("NFA: {:?}", nfa);
+    // println!("NFA: {:?}", nfa);
 
     // Loop until we run out of characters
     for ch in s {
