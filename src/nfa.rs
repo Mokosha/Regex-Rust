@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use expr::Expression;
 use expr::Character;
 
@@ -107,10 +109,10 @@ impl NFA {
         })
     }
 
-    pub fn remove_branches(&self, st: Vec<usize>) -> Vec<usize> {
-        let mut check_states = st.clone();
-        let mut checked_states: Vec<usize> = Vec::new();
-        let mut branchless_states: Vec<usize> = Vec::new();
+    pub fn remove_branches(&self, st: HashSet<usize>) -> HashSet<usize> {
+        let mut check_states: Vec<_> = st.clone().iter().map(|k| *k).collect();
+        let mut checked_states: HashSet<usize> = HashSet::new();
+        let mut branchless_states: HashSet<usize> = HashSet::new();
         loop {
             let st_idx = {
                 match check_states.pop() {
@@ -127,7 +129,7 @@ impl NFA {
                             check_states.push(next);
                         }
                     } else {
-                        branchless_states.push(st_idx);
+                        branchless_states.insert(st_idx);
                     }
                 },
 
@@ -137,7 +139,7 @@ impl NFA {
                             check_states.push(next);
                         }
                     } else {
-                        branchless_states.push(st_idx);
+                        branchless_states.insert(st_idx);
                     }
                 },
 
@@ -152,13 +154,14 @@ impl NFA {
                         check_states.push(id2);
                     }
                 },
-                _ => branchless_states.push(st_idx)
+                _ => {
+                    branchless_states.insert(st_idx);
+                }
             }
 
-            checked_states.push(st_idx);
+            checked_states.insert(st_idx);
         }
 
-        branchless_states.dedup();
         branchless_states
     }
 }

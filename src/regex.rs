@@ -113,6 +113,8 @@
 //!   assert!("ba([a-z]i[0-9])?tman!".is_not_matched_by("baaitman!"));
 //! ```
 
+use std::collections::HashSet;
+
 use expr::Expression;
 use expr::Character;
 use tokenizer::parse_string;
@@ -149,7 +151,8 @@ fn matches_expected(e: ExpectedChar, c: char) -> bool {
 
 fn match_nfa (nfa: NFA, s: Vec<char>) -> bool {
     // Our entry point is the last state on the nfa.
-    let mut check_states: Vec<usize> = vec![nfa.num_states() - 1];
+    let mut check_states: HashSet<usize> = HashSet::new();
+    check_states.insert(nfa.num_states() - 1);
 
     // println!("NFA: {:?}", nfa);
 
@@ -158,9 +161,7 @@ fn match_nfa (nfa: NFA, s: Vec<char>) -> bool {
 
         // If we're out of states, or we only have the success state, then we fail
         // since there is no character-based transition out of it.
-        if check_states.is_empty() ||
-            (check_states.len() == 1 &&
-             *(nfa.state_at(check_states[0])) == State::Success) {
+        if check_states.is_empty() || (check_states.len() == 1 && check_states.contains(&0)) {
             return false;
         }
 
@@ -169,7 +170,7 @@ fn match_nfa (nfa: NFA, s: Vec<char>) -> bool {
 
         // Go through each state and collect all of the states
         // that we can possibly transition to.
-        let mut next_states = Vec::new();
+        let mut next_states = HashSet::new();
 
         for st_idx in check_states.clone() {
 
@@ -178,7 +179,7 @@ fn match_nfa (nfa: NFA, s: Vec<char>) -> bool {
                 // iteration we should know that we can...
                 State::NeedsCharacter(c, next) => {
                     if matches_expected(c, ch) {
-                        next_states.push(next);
+                        next_states.insert(next);
                     }
                 }
                 _ => (),
@@ -187,16 +188,14 @@ fn match_nfa (nfa: NFA, s: Vec<char>) -> bool {
 
         // De-duplicate states
         check_states = next_states;
-        check_states.dedup();
     }
 
     // One last branch resolution
-    check_states = nfa.remove_branches(check_states);
     
     // If we're at the end of the line with our indices, then
     // we need to see if we've reached the success state during the last
     // iteration through our states...
-    check_states.iter().any(|&i| { *(nfa.state_at(i)) == State::Success } )
+    nfa.remove_branches(check_states).iter().any(|&i| { *(nfa.state_at(i)) == State::Success } )
 }
 
 /// A string is a Regular Expression if it can validate other strings
